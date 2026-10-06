@@ -241,3 +241,14 @@ jobs:
         uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: high
+          # One documented exception, not a blanket lowering of the threshold.
+          # GHSA-vfj7-8cjw-p6xm (braces, stack exhaustion via deeply nested
+          # patterns) has NO upstream fix: the advisory reports
+          # `patched: <0.0.0`, and braces 3.0.3 is both the latest release and
+          # the vulnerable one. It reaches the tree only as a dev-only
+          # transitive dependency of the E2E runner
+          # (playwright-bdd > fast-glob > micromatch > braces) and is in no
+          # shipped artifact. Every other high and critical advisory still
+          # fails this job. Remove this line once playwright-bdd updates its
+          # glob chain. See the 2026-10-06 row in docs/decisions.md.
+          allow-ghsas: GHSA-vfj7-8cjw-p6xm

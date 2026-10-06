@@ -20,4 +20,7 @@ validate-maintainers: false
 check-version-increment: false
 
 helm-extra-args: "--timeout 60s"
-lint-conf: {}
+
+# `lint-conf` is deliberately absent. It takes a *path* to a yamllint config;
+# the `lint-conf: {}` carried over from the first draft was a map, which ct
+# cannot unmarshal. Omitting it lets ct use its own default lookup.
