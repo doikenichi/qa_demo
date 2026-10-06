@@ -1,0 +1,21 @@
+description: "Withheld-skill proof for requirement-docs — must fail"
+
+providers:
+  - id: anthropic:messages:claude-sonnet-4-6
+    config:
+      max_tokens: 400
+
+prompts:
+  - "{{user_message}}"
+
+tests:
+  - description: "WITHHELD SKILL — must fail: model won't know the TC-FR format"
+    vars:
+      user_message: "I'm writing the verification plan for FR-001. What ID should I assign to the first test case that verifies the 7-day window boundary?"
+    options:
+      provider:
+        config:
+          system: "You are a helpful software engineering assistant."
+    assert:
+      - type: contains
+        value: "TC-FR-001-1"

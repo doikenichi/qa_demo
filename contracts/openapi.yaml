@@ -1,0 +1,607 @@
+openapi: "3.1.0"
+info:
+  title: Appointment Booking API
+  version: "0.1.0"
+  description: >
+    HTTP contract for the appointment booking application.
+    All shapes are authoritative here and in the behaviour specification
+    (appointment-booking-project.md). No status code or issue code exists
+    unless it appears in both.
+
+paths:
+  /api/slots:
+    get:
+      operationId: listSlots
+      summary: List bookable slots
+      tags: [Customer]
+      parameters:
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: >
+            Local date (YYYY-MM-DD) in the configured time zone. Defaults to
+            today. Must not be before today or after today + 6 days.
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: >
+            Local date (YYYY-MM-DD), inclusive. Defaults to from + 6 days.
+            Must not precede from or exceed today + 6 days.
+      responses:
+        "200":
+          description: Bookable slots in the requested window (may be empty).
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Slot"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+
+  /api/bookings:
+    post:
+      operationId: createBooking
+      summary: Book an appointment slot
+      tags: [Customer]
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 16
+            maxLength: 128
+            pattern: "^[A-Za-z0-9_-]+$"
+          description: >
+            Required. 16–128 characters from A-Z a-z 0-9 _ -. Missing or
+            malformed is a validation_error (precedence step 1).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BookingRequest"
+      responses:
+        "201":
+          description: Booking created.
+          headers:
+            Idempotent-Replay:
+              schema:
+                type: string
+                enum: ["true"]
+              description: >
+                Present (value "true") when this response is a replay of an
+                earlier successful request with the same Idempotency-Key.
+                Absent on a first response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookingResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/SlotNotFound"
+        "409":
+          description: >
+            Slot unavailable, idempotency key reuse, or request in progress.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                slot_unavailable:
+                  value:
+                    error:
+                      code: slot_unavailable
+                      message: "This slot is not available."
+                      details:
+                        - field: slotStart
+                          issue: not_in_future
+                idempotency_key_reuse:
+                  value:
+                    error:
+                      code: idempotency_key_reuse
+                      message: "Idempotency key used with a different request."
+                idempotency_request_in_progress:
+                  value:
+                    error:
+                      code: idempotency_request_in_progress
+                      message: "A request with this key is already in progress."
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/bookings/{confirmationCode}:
+    get:
+      operationId: getBooking
+      summary: Retrieve a booking by confirmation code
+      tags: [Customer]
+      parameters:
+        - $ref: "#/components/parameters/ConfirmationCode"
+      responses:
+        "200":
+          description: Booking found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookingResponse"
+        "404":
+          $ref: "#/components/responses/BookingNotFound"
+
+    delete:
+      operationId: cancelBooking
+      summary: Cancel a booking
+      tags: [Customer]
+      parameters:
+        - $ref: "#/components/parameters/ConfirmationCode"
+      responses:
+        "200":
+          description: Booking cancelled.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookingResponse"
+        "404":
+          $ref: "#/components/responses/BookingNotFound"
+        "409":
+          description: Cancellation not permitted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                cancellation_window_closed:
+                  value:
+                    error:
+                      code: cancellation_window_closed
+                      message: "Cancellation is no longer allowed for this booking."
+                booking_not_cancellable:
+                  value:
+                    error:
+                      code: booking_not_cancellable
+                      message: "This booking cannot be cancelled in its current status."
+
+  /api/staff/bookings:
+    get:
+      operationId: listStaffBookings
+      summary: List bookings for a date range (staff)
+      tags: [Staff]
+      security:
+        - StaffToken: []
+      parameters:
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: >
+            Local date (YYYY-MM-DD). Defaults to today. Past dates permitted.
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: >
+            Local date (YYYY-MM-DD), inclusive. Defaults to from + 6 days.
+            Maximum span: 31 calendar days (to - from <= 30).
+      responses:
+        "200":
+          description: Bookings in the range (all statuses, may be empty).
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StaffBookingResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/staff/bookings/{id}/complete:
+    post:
+      operationId: completeBooking
+      summary: Mark a booking as completed (staff)
+      tags: [Staff]
+      security:
+        - StaffToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Internal booking ID (staff-only field, never returned by customer endpoints).
+      responses:
+        "200":
+          description: Booking marked as completed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaffBookingResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/BookingNotFound"
+        "409":
+          description: Booking cannot be completed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                booking_not_completable:
+                  value:
+                    error:
+                      code: booking_not_completable
+                      message: "This booking cannot be completed."
+                      details:
+                        - field: status
+                          issue: invalid_format
+
+  /api/staff/notifications:
+    get:
+      operationId: listStaffNotifications
+      summary: List notification records (staff)
+      tags: [Staff]
+      security:
+        - StaffToken: []
+      parameters:
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Same semantics as GET /api/staff/bookings from parameter.
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Same semantics as GET /api/staff/bookings to parameter.
+      responses:
+        "200":
+          description: Notification records in the range (may be empty).
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/NotificationRecord"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+components:
+  securitySchemes:
+    StaffToken:
+      type: http
+      scheme: bearer
+      description: >
+        Value of STAFF_API_TOKEN environment variable. Never committed to the
+        repository. See NFR-005 and the Staff credential section of the spec.
+
+  parameters:
+    ConfirmationCode:
+      name: confirmationCode
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 10
+        maxLength: 10
+      description: >
+        10-character Crockford base32 code. Normalized (trimmed, uppercased)
+        before lookup. Malformed and unknown codes both return 404
+        booking_not_found — the response never discloses which check failed
+        (rule 12).
+
+  schemas:
+    Slot:
+      type: object
+      required: [start, end]
+      additionalProperties: false
+      properties:
+        start:
+          type: string
+          format: date-time
+          description: >
+            Slot start instant as RFC 3339 with the configured time zone offset
+            (e.g. 2026-01-05T10:00:00+01:00). Never Z unless the configured
+            zone's offset is genuinely zero.
+        end:
+          type: string
+          format: date-time
+          description: Slot end instant, same format as start. Always start + 30 minutes.
+
+    BookingRequest:
+      type: object
+      required: [slotStart, name, email]
+      additionalProperties: false
+      description: >
+        Unknown body fields are a validation_error (issue: unknown_field).
+        See Input validation section of the spec for all field rules.
+      properties:
+        slotStart:
+          type: string
+          format: date-time
+          description: >
+            Target slot start. Must be at whole-second precision (zero
+            fractional part accepted; non-zero fraction is fractional_seconds;
+            leap second is not_an_instant). Normalized to UTC on arrival.
+        name:
+          type: string
+          description: >
+            1–80 characters after trimming. At least one non-whitespace
+            character. No control characters.
+        email:
+          type: string
+          description: >
+            3–254 characters. Trimmed and lowercased before storage. Exactly
+            one @, non-empty local part, domain with at least one dot. No
+            whitespace or control characters anywhere.
+        reason:
+          type: string
+          description: >
+            Optional. 0–500 characters after trimming. Whitespace-only stored
+            as absent.
+
+    BookingResponse:
+      type: object
+      required:
+        - confirmationCode
+        - status
+        - slotStart
+        - slotEnd
+        - name
+        - email
+        - createdAt
+        - cancellable
+      additionalProperties: false
+      description: >
+        Returned by customer endpoints. Does NOT include the internal id field
+        (rule 12 / NFR-006).
+      properties:
+        confirmationCode:
+          type: string
+          description: 10-character Crockford base32 code. Customer's only credential.
+        status:
+          type: string
+          enum: [booked, cancelled, completed]
+        slotStart:
+          type: string
+          format: date-time
+        slotEnd:
+          type: string
+          format: date-time
+        name:
+          type: string
+        email:
+          type: string
+        reason:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        cancelledAt:
+          type: string
+          format: date-time
+          nullable: true
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        cancellable:
+          type: boolean
+          description: >
+            Backend's current answer to rule 5 (status == booked AND now <
+            slotStart). Frontend must use this field rather than evaluating
+            the cutoff itself.
+
+    StaffBookingResponse:
+      allOf:
+        - $ref: "#/components/schemas/BookingResponse"
+        - type: object
+          required: [id]
+          properties:
+            id:
+              type: integer
+              format: int64
+              description: >
+                Internal booking ID. Only returned by staff endpoints. Never
+                returned by customer endpoints (NFR-006).
+
+    NotificationRecord:
+      type: object
+      required:
+        - id
+        - bookingId
+        - eventId
+        - eventType
+        - recipientEmail
+        - subject
+        - body
+        - createdAt
+      additionalProperties: false
+      description: >
+        Audit record written by notification-service for each committed
+        booking state change (BR-009). Not a delivery — no message is ever
+        sent. Staff-only; customers never see this.
+      properties:
+        id:
+          type: integer
+          format: int64
+        bookingId:
+          type: integer
+          format: int64
+        eventId:
+          type: string
+          format: uuid
+          description: De-duplication key. Unique constraint on notification-service side.
+        eventType:
+          type: string
+          enum: [BookingCreated, BookingCancelled, BookingCompleted]
+        recipientEmail:
+          type: string
+        subject:
+          type: string
+        body:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      additionalProperties: false
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          additionalProperties: false
+          properties:
+            code:
+              type: string
+              enum:
+                - validation_error
+                - slot_not_found
+                - slot_unavailable
+                - booking_not_found
+                - cancellation_window_closed
+                - booking_not_cancellable
+                - booking_not_completable
+                - idempotency_key_reuse
+                - idempotency_request_in_progress
+                - unauthorized
+                - internal_error
+              description: >
+                Stable snake_case code. The closed list is authoritative; no
+                code exists outside it. See Error responses section of the spec.
+            message:
+              type: string
+              description: >
+                Human-readable explanation. Never asserted by tests — issue
+                codes are. May be reworded without a contract change.
+            details:
+              type: array
+              description: >
+                Present only for validation_error, slot_unavailable (reason
+                detail), and booking_not_completable (reason detail).
+                Entries sorted by field then issue, both lexicographically.
+              items:
+                $ref: "#/components/schemas/ValidationDetail"
+
+    ValidationDetail:
+      type: object
+      required: [field, issue]
+      additionalProperties: false
+      properties:
+        field:
+          type: string
+          description: >
+            The caller's own name: JSON key for body fields, header name for
+            headers, parameter name for query parameters. No synthetic paths.
+        issue:
+          type: string
+          enum:
+            - required
+            - not_a_string
+            - too_short
+            - too_long
+            - invalid_format
+            - contains_whitespace
+            - contains_control_character
+            - not_an_instant
+            - fractional_seconds
+            - not_a_date
+            - range_inverted
+            - range_too_wide
+            - before_today
+            - after_window_end
+            - unknown_field
+          description: >
+            Stable snake_case issue code from the closed 15-item list. Adding
+            a code requires a spec change first, then a contract change — never
+            invented at a call site. See Error responses section of the spec.
+
+  responses:
+    ValidationError:
+      description: One or more request fields failed validation.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error:
+              code: validation_error
+              message: "Request validation failed."
+              details:
+                - field: email
+                  issue: contains_whitespace
+                - field: name
+                  issue: too_long
+
+    SlotNotFound:
+      description: >
+        slotStart is not a generated slot start — the business schedule has
+        no such slot in any week (step 4 of POST /api/bookings precedence).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error:
+              code: slot_not_found
+              message: "No such slot exists in the schedule."
+
+    BookingNotFound:
+      description: >
+        Unknown or malformed confirmation code, or unknown staff booking id.
+        Malformed and unknown codes return identical bodies (rule 12 / NFR-006).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error:
+              code: booking_not_found
+              message: "Booking not found."
+
+    Unauthorized:
+      description: Missing or incorrect staff credential.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error:
+              code: unauthorized
+              message: "Staff credential required."
+
+    InternalError:
+      description: >
+        Unexpected failure. Includes exhausted confirmation-code generation
+        (step 6 of POST /api/bookings). Body carries no details and no
+        diagnostic text.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error:
+              code: internal_error
+              message: "An unexpected error occurred."

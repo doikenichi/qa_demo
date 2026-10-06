@@ -1,0 +1,15 @@
+spring:
+  application:
+    name: booking-service
+
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+app:
+  time-zone: ${APP_TIME_ZONE:Europe/Berlin}

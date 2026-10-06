@@ -1,0 +1,28 @@
+description: Eval suite for secure-coding skill
+
+providers:
+  - id: anthropic:messages:claude-sonnet-4-6
+    config:
+      max_tokens: 400
+
+prompts:
+  - "{{user_message}}"
+
+tests:
+  - description: "With skill: identical 404 for malformed and unknown confirmation codes"
+    vars:
+      user_message: "A confirmation code arrives that is only 9 characters long. A different code arrives that is exactly 10 valid characters but matches no row in the database. Should these two cases return different responses?"
+    options:
+      provider:
+        config:
+          system: |
+            You are an AI assistant working on the appointment-booking project.
+
+            Secure coding — identical not-found discipline:
+            All three cases — a well-formed code with no matching row, a malformed code, a code of
+            wrong length — must return the same response: 404 booking_not_found with an identical body.
+            The format check exists to avoid a pointless query, not to produce a distinguishable answer.
+            A test asserts the three responses are identical.
+    assert:
+      - type: contains
+        value: "identical"

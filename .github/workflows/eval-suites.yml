@@ -1,0 +1,113 @@
+name: Eval Suites
+
+# Informational — does not gate pull requests but records results per NFR-012 item 1.
+# One eval suite per skill from Engineering standards as artifacts.
+# One separate job (withheld-skill-proof) proves each suite FAILS without its skill.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+jobs:
+  eval-suites:
+    name: Skill eval suites (with skill loaded)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        skill:
+          - escalation-protocol
+          - spec-authority
+          - code-standard
+          - tdd-cycle
+          - java-patterns
+          - secure-coding
+          - deterministic-tests
+          - requirement-docs
+          - test-design
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Install promptfoo
+        run: npm install -g promptfoo
+
+      - name: Run eval suite for ${{ matrix.skill }}
+        run: |
+          promptfoo eval \
+            --config .claude/evals/${{ matrix.skill }}/promptfooconfig.yaml \
+            --output eval-results-${{ matrix.skill }}.json \
+            --no-cache
+        env:
+          SKILL_NAME: ${{ matrix.skill }}
+
+      - name: Upload eval results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-results-${{ matrix.skill }}
+          path: eval-results-${{ matrix.skill }}.json
+
+  withheld-skill-proof:
+    name: Withheld-skill proof (must fail)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        skill:
+          - escalation-protocol
+          - spec-authority
+          - code-standard
+          - tdd-cycle
+          - java-patterns
+          - secure-coding
+          - deterministic-tests
+          - requirement-docs
+          - test-design
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Install promptfoo
+        run: npm install -g promptfoo
+
+      - name: Run withheld eval for ${{ matrix.skill }} (expected to fail)
+        id: withheld-eval
+        run: |
+          promptfoo eval \
+            --config .claude/evals/${{ matrix.skill }}/promptfooconfig-withheld.yaml \
+            --output withheld-results-${{ matrix.skill }}.json \
+            --no-cache
+          echo "exit_code=$?" >> $GITHUB_OUTPUT
+        continue-on-error: true
+        env:
+          SKILL_NAME: ${{ matrix.skill }}
+
+      - name: Verify withheld eval FAILED (non-zero exit = correct)
+        run: |
+          if [ "${{ steps.withheld-eval.outcome }}" == "success" ]; then
+            echo "ERROR: Withheld-skill eval for ${{ matrix.skill }} PASSED without its skill."
+            echo "This means the eval suite is measuring the model, not the artifact — NFR-012 item 1."
+            exit 1
+          else
+            echo "PASS: Withheld-skill eval for ${{ matrix.skill }} correctly failed without its skill."
+          fi
+
+      - name: Upload withheld eval results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: withheld-results-${{ matrix.skill }}
+          path: withheld-results-${{ matrix.skill }}.json

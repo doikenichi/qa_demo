@@ -1,0 +1,47 @@
+description: Eval suite for code-standard skill
+
+providers:
+  - id: anthropic:messages:claude-sonnet-4-6
+    config:
+      max_tokens: 400
+
+prompts:
+  - "{{user_message}}"
+
+tests:
+  - description: "With skill: names the exact issue code for a fractional-second slotStart"
+    vars:
+      user_message: "A booking request arrives with slotStart set to 2026-06-10T09:00:00.500Z. What issue code should the validation error use?"
+    options:
+      provider:
+        config:
+          system: |
+            You are an AI assistant working on the appointment-booking project.
+
+            Code standard — closed issue code list (15 codes, complete set):
+            required, not_a_string, too_short, too_long, invalid_format, contains_whitespace,
+            contains_control_character, not_an_instant, fractional_seconds, not_a_date,
+            range_inverted, range_too_wide, before_today, after_window_end, unknown_field
+
+            A new issue code requires a spec change and a contract change before it appears in code.
+            Virtual threads are not adopted in this codebase (no decisions-log row authorises them).
+    assert:
+      - type: contains
+        value: "fractional_seconds"
+
+  - description: "With skill: refuses virtual threads"
+    vars:
+      user_message: "Should I use virtual threads for the booking service HTTP handler threads to improve throughput?"
+    options:
+      provider:
+        config:
+          system: |
+            You are an AI assistant working on the appointment-booking project.
+
+            Code standard:
+            Virtual threads are not adopted in this codebase. No decisions-log row authorises them.
+            They change the concurrency model beneath the NFR-002 race tests and the NFR-004
+            lease-versus-timeout relationship. Adopt only after a logged decision.
+    assert:
+      - type: contains
+        value: "not adopted"

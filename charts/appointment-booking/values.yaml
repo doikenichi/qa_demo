@@ -1,0 +1,63 @@
+# Default values for the appointment-booking umbrella chart.
+# Override per environment in a separate values file.
+# Secrets (STAFF_API_TOKEN, OTEL credentials) are injected as Kubernetes Secrets
+# and referenced via secretKeyRef — never hardcoded here (NFR-005).
+
+booking-service:
+  image:
+    repository: ghcr.io/placeholder/booking-service
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  service:
+    type: ClusterIP
+    port: 8080
+  env:
+    APP_TIME_ZONE: Europe/Berlin
+  secretName: booking-service-secrets
+
+notification-service:
+  image:
+    repository: ghcr.io/placeholder/notification-service
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  service:
+    type: ClusterIP
+    port: 8081
+  secretName: notification-service-secrets
+
+booking-db:
+  auth:
+    database: booking
+    existingSecret: booking-db-credentials
+  primary:
+    persistence:
+      enabled: true
+      size: 1Gi
+
+notification-db:
+  auth:
+    database: notification
+    existingSecret: notification-db-credentials
+  primary:
+    persistence:
+      enabled: true
+      size: 1Gi
+
+redis:
+  auth:
+    enabled: false
+  master:
+    persistence:
+      enabled: false
+
+kafka:
+  kraft:
+    enabled: true
+  controller:
+    replicaCount: 1
+  broker:
+    replicaCount: 1
+  persistence:
+    enabled: false

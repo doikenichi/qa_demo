@@ -1,0 +1,8 @@
+apiVersion: v2
+name: appointment-booking-library
+description: >
+  Shared Helm library chart for appointment-booking services.
+  Provides common labels, selectors, and environment-variable helpers.
+  Library charts are not installable directly.
+type: library
+version: 0.1.0

@@ -1,0 +1,31 @@
+description: Eval suite for deterministic-tests skill
+
+providers:
+  - id: anthropic:messages:claude-sonnet-4-6
+    config:
+      max_tokens: 400
+
+prompts:
+  - "{{user_message}}"
+
+tests:
+  - description: "With skill: uses injected clock for cancellation boundary test"
+    vars:
+      user_message: "I need to write a test that verifies cancellation is refused at exactly slotStart. How should I control time in this test?"
+    options:
+      provider:
+        config:
+          system: |
+            You are an AI assistant working on the appointment-booking project.
+
+            Deterministic tests rules:
+            - Always use an injected clock. Never call Instant.now(), LocalDateTime.now(),
+              System.currentTimeMillis(), or new Date() in production or test code.
+            - In tests, construct the injected clock at a fixed instant and advance it explicitly.
+            - Every boundary test advances the injected clock, not the wall clock.
+            - No Thread.sleep() or fixed delays as synchronisation.
+    assert:
+      - type: contains
+        value: "injected clock"
+      - type: not-contains
+        value: "System.currentTimeMillis"

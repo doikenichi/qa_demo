@@ -1,0 +1,30 @@
+apiVersion: v2
+name: appointment-booking
+description: >
+  Umbrella chart for the appointment booking application.
+  Installs booking-service, notification-service, and their infrastructure
+  (PostgreSQL x2, Redis, Kafka). See charts/library for shared templates.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+dependencies:
+  - name: booking-service
+    version: "0.1.0"
+    repository: "file://../booking-service"
+  - name: notification-service
+    version: "0.1.0"
+    repository: "file://../notification-service"
+  - name: postgresql
+    version: "16.2.3"
+    repository: "https://charts.bitnami.com/bitnami"
+    alias: booking-db
+  - name: postgresql
+    version: "16.2.3"
+    repository: "https://charts.bitnami.com/bitnami"
+    alias: notification-db
+  - name: redis
+    version: "20.2.1"
+    repository: "https://charts.bitnami.com/bitnami"
+  - name: kafka
+    version: "32.1.0"
+    repository: "https://charts.bitnami.com/bitnami"

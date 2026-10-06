@@ -1,0 +1,90 @@
+name: Review Agents
+
+# Advisory only — findings are recorded on every PR including clean runs.
+# A finding never blocks a merge (AI-assisted SDLC, NFR-012 item 2).
+
+on:
+  pull_request:
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  run-review-agents:
+    name: Run review agents
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        agent:
+          - standards-reviewer
+          - stability-reviewer
+          - test-layering-reviewer
+          - traceability-auditor
+          - security-reviewer
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get PR diff
+        id: diff
+        run: |
+          git diff origin/${{ github.base_ref }}...HEAD > pr-diff.txt
+          echo "Diff size: $(wc -l < pr-diff.txt) lines"
+
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+      - name: Run ${{ matrix.agent }}
+        id: agent-run
+        run: |
+          # Load the agent definition and run it against the diff.
+          # Output is advisory only — exit code is always 0 (never blocks merge).
+          claude --agent .claude/agents/${{ matrix.agent }}.md \
+            --input pr-diff.txt \
+            --output agent-output-${{ matrix.agent }}.md \
+            --print \
+            --no-interactive \
+            2>&1 || true
+          echo "Agent ${{ matrix.agent }} run complete (advisory only)."
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+      - name: Post findings as PR comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const agentName = '${{ matrix.agent }}';
+            let output = '';
+            try {
+              output = fs.readFileSync(`agent-output-${agentName}.md`, 'utf8');
+            } catch (e) {
+              output = '_(no output captured)_';
+            }
+
+            const body = [
+              `## Review agent: \`${agentName}\``,
+              '',
+              '> **Advisory only** — findings recorded for reference. A finding never blocks merge.',
+              '',
+              output || '_(clean run — no findings)_',
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
+
+      - name: Upload agent output
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: review-agent-${{ matrix.agent }}
+          path: agent-output-${{ matrix.agent }}.md

@@ -1,0 +1,12 @@
+apiVersion: v2
+name: notification-service
+description: >
+  Helm chart for notification-service — consumes booking events from the
+  transactional outbox topic and writes notification records (BR-009).
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+dependencies:
+  - name: appointment-booking-library
+    version: "0.1.0"
+    repository: "file://../library"

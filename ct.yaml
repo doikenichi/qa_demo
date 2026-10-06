@@ -1,0 +1,8 @@
+chart-dirs:
+  - charts/booking-service
+  - charts/notification-service
+
+helm-extra-args: "--timeout 60s"
+
+# Linting only at milestone 0 — install tests require a running cluster (milestone 5+).
+lint-conf: {}

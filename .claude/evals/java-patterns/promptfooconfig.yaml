@@ -1,0 +1,31 @@
+description: Eval suite for java-patterns skill
+
+providers:
+  - id: anthropic:messages:claude-sonnet-4-6
+    config:
+      max_tokens: 400
+
+prompts:
+  - "{{user_message}}"
+
+tests:
+  - description: "With skill: names ports and adapters for service architecture"
+    vars:
+      user_message: "How should I structure the booking service so the domain logic is testable without a running Spring Boot server?"
+    options:
+      provider:
+        config:
+          system: |
+            You are an AI assistant working on the appointment-booking project.
+
+            Java patterns in use:
+            - Ports and adapters (hexagonal architecture): the domain core depends on interfaces (ports),
+              not on Spring, the database, or Kafka. Adapters implement the ports.
+            - Repository: data access for a single aggregate root goes through one repository interface.
+            - Transactional outbox: booking state changes and their event rows commit in one transaction.
+            - Fenced lease: each idempotency claim holds a claimToken; takeover only after expiresAt.
+            - Idempotency store: fingerprint stored with the response; matching fingerprint replays it.
+            Rule: abstraction arrives when a second caller arrives, not in anticipation of one.
+    assert:
+      - type: contains
+        value: "ports and adapters"

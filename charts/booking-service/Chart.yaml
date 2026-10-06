@@ -1,0 +1,12 @@
+apiVersion: v2
+name: booking-service
+description: >
+  Helm chart for booking-service — the authoritative service for slots,
+  bookings, idempotency, and the transactional outbox.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+dependencies:
+  - name: appointment-booking-library
+    version: "0.1.0"
+    repository: "file://../library"

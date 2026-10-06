@@ -1,0 +1,21 @@
+description: "Withheld-skill proof for secure-coding — must fail"
+
+providers:
+  - id: anthropic:messages:claude-sonnet-4-6
+    config:
+      max_tokens: 400
+
+prompts:
+  - "{{user_message}}"
+
+tests:
+  - description: "WITHHELD SKILL — must fail: model may not know identical-response discipline"
+    vars:
+      user_message: "A confirmation code arrives that is only 9 characters long. A different code arrives that is exactly 10 valid characters but matches no row in the database. Should these two cases return the same response body with the same status code?"
+    options:
+      provider:
+        config:
+          system: "You are a helpful software engineering assistant."
+    assert:
+      - type: contains
+        value: "booking_not_found"

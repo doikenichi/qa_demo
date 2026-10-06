@@ -1,0 +1,65 @@
+version: '3'
+
+tasks:
+  build:
+    desc: Build all four pieces — both services, frontend, and E2E package.
+    deps: [build:services, build:frontend, build:e2e]
+
+  build:services:
+    desc: Compile both Java services.
+    cmds:
+      - ./gradlew :services:booking-service:assemble :services:notification-service:assemble
+
+  build:frontend:
+    desc: Type-check and build the frontend.
+    cmds:
+      - pnpm --filter appointment-booking-frontend run build
+
+  build:e2e:
+    desc: Type-check the E2E package.
+    cmds:
+      - pnpm --filter appointment-booking-e2e run type-check
+
+  lint:
+    desc: Run all linters.
+    deps: [lint:java, lint:frontend, lint:contracts, lint:helm]
+
+  lint:java:
+    desc: Run Spotless check and Checkstyle.
+    cmds:
+      - ./gradlew spotlessCheck checkstyleMain checkstyleTest
+
+  lint:frontend:
+    desc: Run ESLint, Prettier check, and tsc on frontend.
+    cmds:
+      - pnpm --filter appointment-booking-frontend run lint
+      - pnpm --filter appointment-booking-frontend run format:check
+      - pnpm --filter appointment-booking-frontend run type-check
+
+  lint:contracts:
+    desc: Spectral OpenAPI lint.
+    cmds:
+      - spectral lint contracts/openapi.yaml --ruleset .spectral.yaml
+
+  lint:helm:
+    desc: helm lint all charts.
+    cmds:
+      - helm lint charts/appointment-booking
+      - helm lint charts/booking-service
+      - helm lint charts/notification-service
+
+  format:
+    desc: Apply all formatters.
+    cmds:
+      - ./gradlew spotlessApply
+      - pnpm --filter appointment-booking-frontend run format
+
+  test:
+    desc: Run all tests (unit + integration).
+    cmds:
+      - ./gradlew test
+
+  install:
+    desc: Install all Node dependencies.
+    cmds:
+      - pnpm install

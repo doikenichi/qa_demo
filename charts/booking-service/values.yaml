@@ -1,0 +1,23 @@
+image:
+  repository: ghcr.io/placeholder/booking-service
+  tag: latest
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+service:
+  type: ClusterIP
+  port: 8080
+
+secretName: booking-service-secrets
+
+env:
+  APP_TIME_ZONE: Europe/Berlin
+  SPRING_DATASOURCE_URL: jdbc:postgresql://booking-db-postgresql:5432/booking
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 512Mi

@@ -1,0 +1,220 @@
+name: Quality Gate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# No automatic retries anywhere in CI — NFR-001.
+# Each job below must be proven to fail on a planted violation (NFR-012 item 3).
+
+jobs:
+  # ── Java formatting and style ────────────────────────────────────────────────
+  java-lint:
+    name: Spotless + Checkstyle
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 25 (Zulu)
+        uses: actions/setup-java@v4
+        with:
+          java-version: "25"
+          distribution: zulu
+          cache: gradle
+
+      - name: Spotless check
+        run: ./gradlew spotlessCheck
+
+      - name: Checkstyle
+        run: ./gradlew checkstyleMain checkstyleTest
+
+  # ── Frontend formatting and types ────────────────────────────────────────────
+  frontend-lint:
+    name: ESLint + Prettier + tsc
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: ESLint
+        run: pnpm --filter frontend lint
+
+      - name: Prettier check
+        run: pnpm --filter frontend format:check
+
+      - name: TypeScript type check
+        run: pnpm --filter frontend typecheck
+
+      - name: E2E TypeScript check
+        run: pnpm --filter e2e typecheck
+
+  # ── Contract lint ─────────────────────────────────────────────────────────────
+  contract-lint:
+    name: Spectral (OpenAPI contract)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Install Spectral
+        run: npm install -g @stoplight/spectral-cli
+
+      - name: Lint OpenAPI contract
+        run: spectral lint contracts/openapi.yaml --ruleset .spectral.yaml
+
+  # ── Helm chart lint ───────────────────────────────────────────────────────────
+  chart-lint:
+    name: helm lint + chart-testing + kubeconform
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: latest
+
+      - name: Set up chart-testing
+        uses: helm/chart-testing-action@v2
+
+      - name: Run helm lint
+        run: |
+          helm lint charts/appointment-booking
+          helm lint charts/booking-service
+          helm lint charts/notification-service
+
+      - name: Run chart-testing lint
+        run: ct lint --config ct.yaml
+
+      - name: Install kubeconform
+        run: |
+          curl -sSL https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz \
+            | tar xz -C /usr/local/bin
+
+      - name: Render and validate Helm templates
+        run: |
+          helm template appointment-booking charts/appointment-booking \
+            | kubeconform -strict -summary
+
+  # ── Secret scanning ───────────────────────────────────────────────────────────
+  secret-scan:
+    name: gitleaks (secret scanning)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ── Dependency and image vulnerability scan ──────────────────────────────────
+  trivy-scan:
+    name: Trivy (dependency + filesystem)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Trivy filesystem scan
+        uses: aquasecurity/trivy-action@v0.30.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: sarif
+          output: trivy-results.sarif
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-results.sarif
+
+  # ── Static analysis (SonarCloud) ──────────────────────────────────────────────
+  sonarcloud:
+    name: SonarCloud static analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 25 (Zulu)
+        uses: actions/setup-java@v4
+        with:
+          java-version: "25"
+          distribution: zulu
+          cache: gradle
+
+      - name: Build and collect coverage
+        run: ./gradlew build jacocoTestReport
+
+      - name: SonarCloud scan
+        uses: SonarSource/sonarcloud-github-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  # ── CodeQL analysis ───────────────────────────────────────────────────────────
+  codeql:
+    name: CodeQL (Java)
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 25 (Zulu)
+        uses: actions/setup-java@v4
+        with:
+          java-version: "25"
+          distribution: zulu
+          cache: gradle
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: java
+
+      - name: Build for CodeQL
+        run: ./gradlew compileJava
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@v3
+
+  # ── Dependency review (PRs only) ─────────────────────────────────────────────
+  dependency-review:
+    name: Dependency review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Dependency review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high

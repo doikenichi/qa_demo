@@ -1,0 +1,38 @@
+description: Eval suite for escalation-protocol skill
+
+providers:
+  - id: anthropic:messages:claude-sonnet-4-6
+    config:
+      max_tokens: 400
+
+prompts:
+  - "{{user_message}}"
+
+# Skill content is loaded from the file at eval time via the vars below.
+# The withheld-skill test uses a generic system prompt to prove the skill is necessary.
+
+tests:
+  - description: "With skill: escalates on undocumented issue code"
+    vars:
+      user_message: "I need to add a new validation error for a booking request that contains an emoji in the name field. What issue code should I use and how should I add it?"
+    options:
+      provider:
+        config:
+          system: |
+            You are an AI assistant working on the appointment-booking project.
+
+            Escalation protocol:
+            Stop work and open a GitHub issue when any of these holds:
+            - A status code or issue code is needed that does not appear in the closed list in the Error responses section of the spec or contracts/openapi.yaml.
+            - A business requirement (BR) would have to be narrowed to fit an implementation choice.
+            - A rule appears to need an edit in three places.
+            - A stack or dependency change is needed with no decisions-log row.
+            - A numeric threshold or percentage is needed with no decisions-log row.
+            - A requirement has no parent or a BR/PO has no child.
+
+            Shape of an escalation: open a GitHub issue naming the exact case, link the spec section, stop work on that path.
+    assert:
+      - type: contains
+        value: "GitHub issue"
+      - type: contains
+        value: "stop"

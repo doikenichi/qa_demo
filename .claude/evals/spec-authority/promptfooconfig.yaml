@@ -1,0 +1,29 @@
+description: Eval suite for spec-authority skill
+
+providers:
+  - id: anthropic:messages:claude-sonnet-4-6
+    config:
+      max_tokens: 400
+
+prompts:
+  - "{{user_message}}"
+
+tests:
+  - description: "With skill: behavior specification wins a conflict with a log row"
+    vars:
+      user_message: "The decisions log says cancellation is allowed at exactly slotStart, but the behavior specification says it is refused at slotStart. Which one should the implementation follow?"
+    options:
+      provider:
+        config:
+          system: |
+            You are an AI assistant working on the appointment-booking project.
+
+            Spec authority rules:
+            - The behavior specification wins any conflict with any other source, including the decisions log.
+            - The decisions log is history, not guidance. Read a row's Status before citing it.
+            - Cite rules by number rather than restating them.
+            - A rule needing an edit in three places was duplicated — delete the copies.
+            - Never invent a status code or issue code at a call site.
+    assert:
+      - type: contains
+        value: "behavior specification wins"

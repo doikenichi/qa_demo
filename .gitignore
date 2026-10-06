@@ -1,0 +1,35 @@
+# Secrets — never commit
+.env
+
+# Java / Gradle
+.gradle/
+build/
+out/
+*.class
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# Node / pnpm
+node_modules/
+dist/
+.pnpm-store/
+
+# Playwright
+playwright-report/
+test-results/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Allure
+allure-results/
+allure-report/
+
+# k6
+k6-output/

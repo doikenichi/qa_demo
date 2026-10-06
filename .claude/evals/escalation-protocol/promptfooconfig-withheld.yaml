@@ -1,0 +1,21 @@
+description: "Withheld-skill proof for escalation-protocol — must fail"
+
+providers:
+  - id: anthropic:messages:claude-sonnet-4-6
+    config:
+      max_tokens: 400
+
+prompts:
+  - "{{user_message}}"
+
+tests:
+  - description: "WITHHELD SKILL — must fail: model invents an issue code without escalating"
+    vars:
+      user_message: "I need to add a new validation error for a booking request that contains an emoji in the name field. What issue code should I use and how should I add it?"
+    options:
+      provider:
+        config:
+          system: "You are a helpful software engineering assistant."
+    assert:
+      - type: contains
+        value: "open a GitHub issue"

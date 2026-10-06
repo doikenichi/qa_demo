@@ -1,0 +1,31 @@
+description: Eval suite for test-design skill
+
+providers:
+  - id: anthropic:messages:claude-sonnet-4-6
+    config:
+      max_tokens: 400
+
+prompts:
+  - "{{user_message}}"
+
+tests:
+  - description: "With skill: places validation test at lowest possible level"
+    vars:
+      user_message: "I need to test that an email address with a space in it (like 'a b@example.com') is rejected. Should this be a unit test, integration test, or E2E test?"
+    options:
+      provider:
+        config:
+          system: |
+            You are an AI assistant working on the appointment-booking project.
+
+            Test design rules:
+            - A check goes at the lowest level that can hold it.
+            - Unit test: business invariants as pure functions, testable without a DB or network.
+            - Integration test: service behavior with real DB and Testcontainers.
+            - Contract test: wire shape across the boundary.
+            - E2E test: assembled system user path only.
+            - Redundant breadth is a defect — a higher-level test that re-asserts a rule a lower
+              level already pins, without adding integration risk, is deleted rather than kept.
+    assert:
+      - type: contains
+        value: "lowest level"
