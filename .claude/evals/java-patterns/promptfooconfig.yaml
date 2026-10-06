@@ -1,31 +1,29 @@
+# Eval suite for the java-patterns skill.
+# The provider loads .claude/skills/java-patterns.md itself as the system prompt, so this
+# suite is bound to the committed artifact: delete or weaken that file and this
+# suite stops passing. Assertions are contains/not-contains only — no LLM judge.
+
 description: Eval suite for java-patterns skill
-
 providers:
-  - id: anthropic:messages:claude-sonnet-4-6
+  - id: "exec: node ../claude-provider.mjs"
     config:
-      max_tokens: 400
-
+      systemPromptFile: .claude/skills/java-patterns.md
 prompts:
   - "{{user_message}}"
-
 tests:
-  - description: "With skill: names ports and adapters for service architecture"
+  - description: "With skill: abstraction waits for a second caller"
     vars:
-      user_message: "How should I structure the booking service so the domain logic is testable without a running Spring Boot server?"
-    options:
-      provider:
-        config:
-          system: |
-            You are an AI assistant working on the appointment-booking project.
-
-            Java patterns in use:
-            - Ports and adapters (hexagonal architecture): the domain core depends on interfaces (ports),
-              not on Spring, the database, or Kafka. Adapters implement the ports.
-            - Repository: data access for a single aggregate root goes through one repository interface.
-            - Transactional outbox: booking state changes and their event rows commit in one transaction.
-            - Fenced lease: each idempotency claim holds a claimToken; takeover only after expiresAt.
-            - Idempotency store: fingerprint stored with the response; matching fingerprint replays it.
-            Rule: abstraction arrives when a second caller arrives, not in anticipation of one.
+      user_message: I have three similar lines of booking validation logic and I expect more callers later. Should I extract an abstraction now?
     assert:
-      - type: contains
-        value: "ports and adapters"
+      # Chosen by measurement. contains "ports and adapters" was flaky: the
+      # model describes the pattern correctly ("a domain core plus adapters",
+      # "depends only on ports") without using that exact phrase, so the
+      # suite went red on a correct answer. Loosening it to ports + adapters
+      # separately would have destroyed discrimination instead, since
+      # hexagonal architecture is standard advice a generic assistant gives.
+      #
+      # "second caller" is this codebase's own trigger for introducing an
+      # abstraction. A generic assistant reaches for the rule of three or
+      # "when you see duplication".
+      - type: icontains
+        value: second caller

@@ -1,21 +1,28 @@
-description: "Withheld-skill proof for test-design — must fail"
+# Withheld-skill proof for test-design. Identical to promptfooconfig.yaml except that
+# the system prompt is a generic assistant with none of the project's standards.
+# This MUST fail: if it passes, the suite is measuring the model rather than the
+# artifact (NFR-012 item 1). Verified by .claude/evals/verify-withheld.mjs, which
+# also rejects a run that merely errored.
 
+description: Withheld-skill proof for test-design — must fail
 providers:
-  - id: anthropic:messages:claude-sonnet-4-6
+  - id: "exec: node ../claude-provider.mjs"
     config:
-      max_tokens: 400
-
+      systemPromptFile: .claude/evals/withheld-system-prompt.txt
 prompts:
   - "{{user_message}}"
-
 tests:
   - description: "WITHHELD SKILL — must fail: model won't name the lowest-level rule"
     vars:
-      user_message: "I need to test that an email address with a space in it (like 'a b@example.com') is rejected. Should this be a unit test, integration test, or E2E test?"
-    options:
-      provider:
-        config:
-          system: "You are a helpful software engineering assistant."
+      user_message: I need to test that an email address with a space in it (like 'a b@example.com') is rejected. Should this be a unit test, integration test, or E2E test?
     assert:
-      - type: contains
-        value: "lowest level"
+      # Hyphen-tolerant: the skill induces both "lowest level" and
+      # "lowest-level rule". The phrase itself is the skill-specific signal — a
+      # generic assistant answers "unit test" for this question too, so the
+      # conclusion alone would not discriminate and the withheld proof would pass.
+      - type: regex
+        value: "lowest[- ]level"
+      # The skill level table pins this project stack. The withheld run
+      # answered in pytest, having no way to know the project is JUnit/Vitest.
+      - type: regex
+        value: "Vitest|JUnit"

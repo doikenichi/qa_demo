@@ -1,21 +1,28 @@
-description: "Withheld-skill proof for deterministic-tests — must fail"
+# Withheld-skill proof for deterministic-tests. Identical to promptfooconfig.yaml except that
+# the system prompt is a generic assistant with none of the project's standards.
+# This MUST fail: if it passes, the suite is measuring the model rather than the
+# artifact (NFR-012 item 1). Verified by .claude/evals/verify-withheld.mjs, which
+# also rejects a run that merely errored.
 
+description: Withheld-skill proof for deterministic-tests — must fail
 providers:
-  - id: anthropic:messages:claude-sonnet-4-6
+  - id: "exec: node ../claude-provider.mjs"
     config:
-      max_tokens: 400
-
+      systemPromptFile: .claude/evals/withheld-system-prompt.txt
 prompts:
   - "{{user_message}}"
-
 tests:
-  - description: "WITHHELD SKILL — must fail: model suggests system clock or sleep"
+  - description: "WITHHELD SKILL — must fail: model may not require a recorded attempt count"
     vars:
-      user_message: "I need to write a test that verifies cancellation is refused at exactly slotStart. How should I control time in this test?"
-    options:
-      provider:
-        config:
-          system: "You are a helpful software engineering assistant."
+      user_message: A test that waits for notification-service to write a notification record sometimes passes and sometimes fails. What does this project require me to do about it, and what exactly must the wait look like?
     assert:
-      - type: contains
-        value: "injected clock"
+      # Chosen by measurement. The clock-API question this replaced could be
+      # answered correctly by chance: a generic assistant that happens to pick
+      # Java mentions Instant.now() too, so the withheld case failed only 2 of
+      # 3 runs — not evidence under NFR-001.
+      #
+      # "recorded attempt count" is this project's own requirement for a
+      # bounded wait. A generic assistant reaches for a retry, a sleep, or
+      # Awaitility and does not require the attempt count be recorded.
+      - type: icontains
+        value: attempt count

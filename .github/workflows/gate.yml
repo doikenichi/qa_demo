@@ -31,7 +31,7 @@ jobs:
 
   # ── Frontend formatting and types ────────────────────────────────────────────
   frontend-lint:
-    name: ESLint + Prettier + tsc
+    name: Biome + tsc
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -43,23 +43,29 @@ jobs:
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: latest
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: ESLint
-        run: pnpm --filter frontend lint
+      # Biome replaces ESLint and Prettier: one tool, one pass, covering both
+      # the frontend and the e2e package from the root biome.json. `biome ci`
+      # checks formatting, lint rules and import order without writing.
+      #
+      # The script passes --error-on-warnings, which is load-bearing: Biome
+      # reports several recommended rules (noNonNullAssertion among them) as
+      # warnings, and plain `biome ci` exits 0 on a warning. Without the flag a
+      # planted static-analysis violation does NOT fail the gate, which NFR-012
+      # requires it to. It is the equivalent of the `--max-warnings 0` that the
+      # replaced ESLint invocation carried.
+      - name: Biome (format + lint)
+        run: pnpm run lint
 
-      - name: Prettier check
-        run: pnpm --filter frontend format:check
-
+      # Biome does not type-check; tsc still owns that.
       - name: TypeScript type check
-        run: pnpm --filter frontend typecheck
+        run: pnpm --filter appointment-booking-frontend type-check
 
       - name: E2E TypeScript check
-        run: pnpm --filter e2e typecheck
+        run: pnpm --filter appointment-booking-e2e type-check
 
   # ── Contract lint ─────────────────────────────────────────────────────────────
   contract-lint:
@@ -91,19 +97,31 @@ jobs:
       - name: Set up Helm
         uses: azure/setup-helm@v4
         with:
-          version: latest
+          version: v3.19.0
 
       - name: Set up chart-testing
         uses: helm/chart-testing-action@v2
 
+      # Without this, the service charts cannot resolve the shared library
+      # chart and `appointment-booking.fullname` is undefined at lint time.
+      # Chart.lock is committed, so `build` pins rather than re-resolves.
+      - name: Resolve chart dependencies
+        run: |
+          helm dependency build charts/booking-service
+          helm dependency build charts/notification-service
+          helm dependency build charts/appointment-booking
+
       - name: Run helm lint
         run: |
+          helm lint charts/library
           helm lint charts/appointment-booking
           helm lint charts/booking-service
           helm lint charts/notification-service
 
+      # --all rather than diff detection: the gate must not depend on which
+      # files a pull request happened to touch.
       - name: Run chart-testing lint
-        run: ct lint --config ct.yaml
+        run: ct lint --config ct.yaml --all
 
       - name: Install kubeconform
         run: |
@@ -133,11 +151,16 @@ jobs:
   trivy-scan:
     name: Trivy (dependency + filesystem)
     runs-on: ubuntu-latest
+    # upload-sarif writes to the code-scanning API; without this the upload is
+    # rejected. The scan step itself is what gates (exit-code: 1 on HIGH/CRITICAL).
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - uses: actions/checkout@v4
 
       - name: Run Trivy filesystem scan
-        uses: aquasecurity/trivy-action@v0.30.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
           scan-ref: .

@@ -1,21 +1,20 @@
-description: "Withheld-skill proof for escalation-protocol — must fail"
+# Withheld-skill proof for escalation-protocol. Identical to promptfooconfig.yaml except that
+# the system prompt is a generic assistant with none of the project's standards.
+# This MUST fail: if it passes, the suite is measuring the model rather than the
+# artifact (NFR-012 item 1). Verified by .claude/evals/verify-withheld.mjs, which
+# also rejects a run that merely errored.
 
+description: Withheld-skill proof for escalation-protocol — must fail
 providers:
-  - id: anthropic:messages:claude-sonnet-4-6
+  - id: "exec: node ../claude-provider.mjs"
     config:
-      max_tokens: 400
-
+      systemPromptFile: .claude/evals/withheld-system-prompt.txt
 prompts:
   - "{{user_message}}"
-
 tests:
   - description: "WITHHELD SKILL — must fail: model invents an issue code without escalating"
     vars:
-      user_message: "I need to add a new validation error for a booking request that contains an emoji in the name field. What issue code should I use and how should I add it?"
-    options:
-      provider:
-        config:
-          system: "You are a helpful software engineering assistant."
+      user_message: I need to add a new validation error for a booking request that contains an emoji in the name field. What issue code should I use and how should I add it?
     assert:
       - type: contains
-        value: "open a GitHub issue"
+        value: open a GitHub issue

@@ -1,21 +1,30 @@
-description: "Withheld-skill proof for java-patterns — must fail"
+# Withheld-skill proof for java-patterns. Identical to promptfooconfig.yaml except that
+# the system prompt is a generic assistant with none of the project's standards.
+# This MUST fail: if it passes, the suite is measuring the model rather than the
+# artifact (NFR-012 item 1). Verified by .claude/evals/verify-withheld.mjs, which
+# also rejects a run that merely errored.
 
+description: Withheld-skill proof for java-patterns — must fail
 providers:
-  - id: anthropic:messages:claude-sonnet-4-6
+  - id: "exec: node ../claude-provider.mjs"
     config:
-      max_tokens: 400
-
+      systemPromptFile: .claude/evals/withheld-system-prompt.txt
 prompts:
   - "{{user_message}}"
-
 tests:
-  - description: "WITHHELD SKILL — must fail: model won't name the specific pattern"
+  - description: "WITHHELD SKILL — must fail: model may not name the second-caller trigger"
     vars:
-      user_message: "How should I structure the booking service so the domain logic is testable without a running Spring Boot server?"
-    options:
-      provider:
-        config:
-          system: "You are a helpful software engineering assistant."
+      user_message: I have three similar lines of booking validation logic and I expect more callers later. Should I extract an abstraction now?
     assert:
-      - type: contains
-        value: "ports and adapters"
+      # Chosen by measurement. contains "ports and adapters" was flaky: the
+      # model describes the pattern correctly ("a domain core plus adapters",
+      # "depends only on ports") without using that exact phrase, so the
+      # suite went red on a correct answer. Loosening it to ports + adapters
+      # separately would have destroyed discrimination instead, since
+      # hexagonal architecture is standard advice a generic assistant gives.
+      #
+      # "second caller" is this codebase's own trigger for introducing an
+      # abstraction. A generic assistant reaches for the rule of three or
+      # "when you see duplication".
+      - type: icontains
+        value: second caller

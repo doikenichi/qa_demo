@@ -27,37 +27,38 @@ notification-service:
     port: 8081
   secretName: notification-service-secrets
 
-booking-db:
-  auth:
-    database: booking
-    existingSecret: booking-db-credentials
-  primary:
-    persistence:
-      enabled: true
-      size: 1Gi
-
-notification-db:
-  auth:
-    database: notification
-    existingSecret: notification-db-credentials
-  primary:
-    persistence:
-      enabled: true
-      size: 1Gi
-
-redis:
-  auth:
-    enabled: false
-  master:
-    persistence:
-      enabled: false
-
-kafka:
-  kraft:
-    enabled: true
-  controller:
-    replicaCount: 1
-  broker:
-    replicaCount: 1
-  persistence:
-    enabled: false
+# ── Staged for milestone 5, when the infrastructure subcharts are added ──────
+# booking-db:
+#   auth:
+#     database: booking
+#     existingSecret: booking-db-credentials
+#   primary:
+#     persistence:
+#       enabled: true
+#       size: 1Gi
+#
+# notification-db:
+#   auth:
+#     database: notification
+#     existingSecret: notification-db-credentials
+#   primary:
+#     persistence:
+#       enabled: true
+#       size: 1Gi
+#
+# redis:
+#   auth:
+#     enabled: false
+#   master:
+#     persistence:
+#       enabled: false
+#
+# kafka:
+#   kraft:
+#     enabled: true
+#   controller:
+#     replicaCount: 1
+#   broker:
+#     replicaCount: 1
+#   persistence:
+#     enabled: false

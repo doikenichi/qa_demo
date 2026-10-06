@@ -1,21 +1,20 @@
-description: "Withheld-skill proof for spec-authority — must fail"
+# Withheld-skill proof for spec-authority. Identical to promptfooconfig.yaml except that
+# the system prompt is a generic assistant with none of the project's standards.
+# This MUST fail: if it passes, the suite is measuring the model rather than the
+# artifact (NFR-012 item 1). Verified by .claude/evals/verify-withheld.mjs, which
+# also rejects a run that merely errored.
 
+description: Withheld-skill proof for spec-authority — must fail
 providers:
-  - id: anthropic:messages:claude-sonnet-4-6
+  - id: "exec: node ../claude-provider.mjs"
     config:
-      max_tokens: 400
-
+      systemPromptFile: .claude/evals/withheld-system-prompt.txt
 prompts:
   - "{{user_message}}"
-
 tests:
   - description: "WITHHELD SKILL — must fail: model may not identify behavior specification as winning source"
     vars:
-      user_message: "The decisions log says cancellation is allowed at exactly slotStart, but the behavior specification says it is refused at slotStart. Which one should the implementation follow?"
-    options:
-      provider:
-        config:
-          system: "You are a helpful software engineering assistant."
+      user_message: The decisions log says cancellation is allowed at exactly slotStart, but the behavior specification says it is refused at slotStart. Which one should the implementation follow?
     assert:
       - type: contains
-        value: "behavior specification wins"
+        value: behavior specification wins

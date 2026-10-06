@@ -1,0 +1,6 @@
+dependencies:
+- name: appointment-booking-library
+  repository: file://../library
+  version: 0.1.0
+digest: sha256:247f7cd4384d81092a619b64de76b1501a37bdc2d231baab78a792732b11b794
+generated: "2026-10-06T13:32:15.2187114-06:00"

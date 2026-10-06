@@ -1,21 +1,20 @@
-description: "Withheld-skill proof for tdd-cycle — must fail"
+# Withheld-skill proof for tdd-cycle. Identical to promptfooconfig.yaml except that
+# the system prompt is a generic assistant with none of the project's standards.
+# This MUST fail: if it passes, the suite is measuring the model rather than the
+# artifact (NFR-012 item 1). Verified by .claude/evals/verify-withheld.mjs, which
+# also rejects a run that merely errored.
 
+description: Withheld-skill proof for tdd-cycle — must fail
 providers:
-  - id: anthropic:messages:claude-sonnet-4-6
+  - id: "exec: node ../claude-provider.mjs"
     config:
-      max_tokens: 400
-
+      systemPromptFile: .claude/evals/withheld-system-prompt.txt
 prompts:
   - "{{user_message}}"
-
 tests:
   - description: "WITHHELD SKILL — must fail: model won't produce the TC-FR ID format"
     vars:
-      user_message: "I'm writing a test that verifies cancellation at exactly slotStart is refused. It's the second test case for FR-006. What should I name it and what ID should it carry?"
-    options:
-      provider:
-        config:
-          system: "You are a helpful software engineering assistant."
+      user_message: I'm writing a test that verifies cancellation at exactly slotStart is refused. It's the second test case for FR-006. What should I name it and what ID should it carry?
     assert:
       - type: contains
-        value: "TC-FR-006-2"
+        value: TC-FR-006-2

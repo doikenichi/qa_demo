@@ -34,3 +34,6 @@ allure-report/
 # k6
 k6-output/
 ignorme.md
+
+# Helm vendored subcharts — resolved from the committed Chart.lock in CI.
+charts/*/charts/

@@ -79,7 +79,7 @@ milestone work proceeds; the rows below cover Milestone 0.
 | `.spectral.yaml` | "Spectral OAS ruleset config extending spectral:oas, operation-operationId as error." | Ken Doi | Yes |
 | `.github/workflows/build.yml` | "GitHub Actions build workflow: JDK 25 Zulu, Node 24, pnpm, Task; runs `task build`." | Ken Doi | Yes |
 | `.github/workflows/test.yml` | "GitHub Actions test workflow: Java tests via Gradle, frontend tests via Vitest; JUnit XML upload." | Ken Doi | Yes |
-| `.github/workflows/gate.yml` | "Quality gate workflow: Spotless, Checkstyle, ESLint, Prettier, tsc, Spectral, helm lint, chart-testing, kubeconform, gitleaks, Trivy, SonarCloud, CodeQL, dependency-review. No retries. No AI evaluator." | Ken Doi | Yes |
+| `.github/workflows/gate.yml` | "Quality gate workflow: Spotless, Checkstyle, Biome, tsc, Spectral, helm lint, chart-testing, kubeconform, gitleaks, Trivy, SonarCloud, CodeQL, dependency-review. No retries. No AI evaluator." | Ken Doi | Pending — re-review needed: Biome replaced ESLint and Prettier on 2026-10-06 |
 | `.github/workflows/eval-suites.yml` | "Eval suites workflow: promptfoo for each skill; separate withheld-skill-proof job that MUST fail." | Ken Doi | Yes |
 | `.github/workflows/review-agents.yml` | "Review agents workflow: advisory only, always exits 0, posts PR comment including clean runs." | Ken Doi | Yes |
 | `sonar-project.properties` | "SonarCloud config for Java 25, two services, frontend coverage." | Ken Doi | Yes |
@@ -89,7 +89,7 @@ milestone work proceeds; the rows below cover Milestone 0.
 | `.claude/evals/*/promptfooconfig*.yaml` (9 suites × 2) | "Write promptfoo eval suites for each skill using only contains/not-contains/regex assertions (no llm-rubric). One withheld-skill config per skill." | Ken Doi | Pending |
 | `services/booking-service/` skeleton | "Spring Boot 3.4.x, Java 25, OTel wiring, Spotless+Checkstyle, no product behavior." | Ken Doi | Pending |
 | `services/notification-service/` skeleton | "Spring Boot 3.4.x, Java 25, OTel wiring, Kafka consumer skeleton, no product behavior." | Ken Doi | Pending |
-| `frontend/` skeleton | "Vite + React + TypeScript, strict tsc, ESLint + Prettier, no product behavior." | Ken Doi | Pending |
+| `frontend/` skeleton | "Vite + React + TypeScript, strict tsc, Biome, no product behavior." | Ken Doi | Pending |
 | `e2e/` skeleton | "Playwright + playwright-bdd, TypeScript strict, no product behavior." | Ken Doi | Pending |
 | `Taskfile.yml` | "Single Taskfile with build, test, lint, format, helm-lint tasks delegating to Gradle and pnpm." | Ken Doi | Pending |
 | `docs/requirements/NFR-012.md` | "Acceptance criteria, test cases, evidence table for NFR-012." | Ken Doi | Yes |

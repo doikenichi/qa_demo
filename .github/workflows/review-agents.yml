@@ -1,7 +1,11 @@
 name: Review Agents
 
-# Advisory only — findings are recorded on every PR including clean runs.
-# A finding never blocks a merge (AI-assisted SDLC, NFR-012 item 2).
+# Advisory only — findings are recorded on every pull request including clean runs.
+# A finding never blocks a merge (AI-assisted SDLC; NFR-012 item 2). Every step
+# below is continue-on-error for that reason: no AI step can pass or fail the build.
+#
+# Authenticated by a Claude subscription OAuth token (`claude setup-token`), not an
+# Anthropic API key.
 
 on:
   pull_request:
@@ -28,63 +32,34 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Get PR diff
-        id: diff
-        run: |
-          git diff origin/${{ github.base_ref }}...HEAD > pr-diff.txt
-          echo "Diff size: $(wc -l < pr-diff.txt) lines"
-
-      - name: Install Claude Code CLI
-        run: npm install -g @anthropic-ai/claude-code
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-
       - name: Run ${{ matrix.agent }}
-        id: agent-run
-        run: |
-          # Load the agent definition and run it against the diff.
-          # Output is advisory only — exit code is always 0 (never blocks merge).
-          claude --agent .claude/agents/${{ matrix.agent }}.md \
-            --input pr-diff.txt \
-            --output agent-output-${{ matrix.agent }}.md \
-            --print \
-            --no-interactive \
-            2>&1 || true
-          echo "Agent ${{ matrix.agent }} run complete (advisory only)."
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-
-      - name: Post findings as PR comment
-        uses: actions/github-script@v7
+        uses: anthropics/claude-code-action@v1
+        continue-on-error: true
         with:
-          script: |
-            const fs = require('fs');
-            const agentName = '${{ matrix.agent }}';
-            let output = '';
-            try {
-              output = fs.readFileSync(`agent-output-${agentName}.md`, 'utf8');
-            } catch (e) {
-              output = '_(no output captured)_';
-            }
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          # Comment on a pull_request event rather than waiting for a trigger phrase.
+          track_progress: true
+          # One comment per agent: a sticky comment would have the five matrix legs
+          # overwrite each other.
+          use_sticky_comment: false
+          prompt: |
+            Read `.claude/agents/${{ matrix.agent }}.md`. That file is the review
+            standard — apply exactly it, and nothing else, to the diff of this pull
+            request against its base branch.
 
-            const body = [
-              `## Review agent: \`${agentName}\``,
-              '',
-              '> **Advisory only** — findings recorded for reference. A finding never blocks merge.',
-              '',
-              output || '_(clean run — no findings)_',
-            ].join('\n');
+            The specification is `appointment-booking-project.md`. Cite rules and
+            requirements by their identifier rather than restating them.
 
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body,
-            });
+            Post one comment titled "Review agent: `${{ matrix.agent }}`" and begin it
+            with the line:
+            "> **Advisory only** — a finding never blocks merge."
 
-      - name: Upload agent output
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: review-agent-${{ matrix.agent }}
-          path: agent-output-${{ matrix.agent }}.md
+            Report every finding with its file and line. If you find nothing, say so
+            explicitly — write that the run was clean and that you found no findings.
+            A clean run is required evidence, so never end without a comment.
+
+            Do not modify any file. Review only.
+          claude_args: |
+            --max-turns 8
+            --disallowedTools "Edit,Write,NotebookEdit"

@@ -9,8 +9,10 @@ on:
     branches: [main]
   pull_request:
 
+# Authenticated by a Claude subscription OAuth token (`claude setup-token`),
+# not an Anthropic API key. The provider shells out to the Claude Code CLI.
 env:
-  ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+  CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
 jobs:
   eval-suites:
@@ -37,8 +39,8 @@ jobs:
         with:
           node-version: "24"
 
-      - name: Install promptfoo
-        run: npm install -g promptfoo
+      - name: Install promptfoo and the Claude Code CLI
+        run: npm install -g promptfoo @anthropic-ai/claude-code
 
       - name: Run eval suite for ${{ matrix.skill }}
         run: |
@@ -48,6 +50,15 @@ jobs:
             --no-cache
         env:
           SKILL_NAME: ${{ matrix.skill }}
+
+      # Diagnostic only, never changes the outcome. Retries are banned (NFR-001),
+      # so a red run stays red — this makes it readable: an assertion the skill
+      # failed to produce and a quota or transport fault look identical in
+      # promptfoo's `error` field otherwise.
+      - name: Classify the run
+        if: always()
+        run: |
+          node .claude/evals/summarize-run.mjs             "${{ matrix.skill }}"             "eval-results-${{ matrix.skill }}.json"
 
       - name: Upload eval results
         uses: actions/upload-artifact@v4
@@ -80,8 +91,8 @@ jobs:
         with:
           node-version: "24"
 
-      - name: Install promptfoo
-        run: npm install -g promptfoo
+      - name: Install promptfoo and the Claude Code CLI
+        run: npm install -g promptfoo @anthropic-ai/claude-code
 
       - name: Run withheld eval for ${{ matrix.skill }} (expected to fail)
         id: withheld-eval
@@ -90,20 +101,20 @@ jobs:
             --config .claude/evals/${{ matrix.skill }}/promptfooconfig-withheld.yaml \
             --output withheld-results-${{ matrix.skill }}.json \
             --no-cache
-          echo "exit_code=$?" >> $GITHUB_OUTPUT
         continue-on-error: true
         env:
           SKILL_NAME: ${{ matrix.skill }}
 
-      - name: Verify withheld eval FAILED (non-zero exit = correct)
+      # A non-zero exit from the runner is not evidence on its own: an invalid
+      # model id, a missing key, or a network fault also exits non-zero. The
+      # verifier requires that the provider answered every case AND that an
+      # assertion genuinely failed. See NFR-012 item 1.
+      - name: Verify the withheld-skill proof is genuine
         run: |
-          if [ "${{ steps.withheld-eval.outcome }}" == "success" ]; then
-            echo "ERROR: Withheld-skill eval for ${{ matrix.skill }} PASSED without its skill."
-            echo "This means the eval suite is measuring the model, not the artifact — NFR-012 item 1."
-            exit 1
-          else
-            echo "PASS: Withheld-skill eval for ${{ matrix.skill }} correctly failed without its skill."
-          fi
+          node .claude/evals/verify-withheld.mjs \
+            "${{ matrix.skill }}" \
+            "withheld-results-${{ matrix.skill }}.json"
+
 
       - name: Upload withheld eval results
         uses: actions/upload-artifact@v4
