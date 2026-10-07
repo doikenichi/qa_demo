@@ -40,6 +40,14 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Prepare review input and output
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          mkdir -p review-findings
+          git diff --no-ext-diff "$BASE_SHA" "$HEAD_SHA" -- > review-diff.patch
+
       - name: Run ${{ matrix.agent }}
         uses: anthropics/claude-code-action@v1
         continue-on-error: true
@@ -52,8 +60,8 @@ jobs:
           # job owns the one place findings appear.
           prompt: |
             Read `.claude/agents/${{ matrix.agent }}.md`. That file is the review
-            standard — apply exactly it, and nothing else, to the diff of this pull
-            request against its base branch.
+            standard — apply exactly it, and nothing else, to `review-diff.patch`,
+            the diff of this pull request against its base branch.
 
             The specification is `appointment-booking-project.md`. Cite rules and
             requirements by their identifier rather than restating them.
@@ -97,6 +105,7 @@ jobs:
             file, and do not commit or push.
           claude_args: |
             --max-turns 10
+            --allowedTools "Read,Write"
             --disallowedTools "Edit,NotebookEdit"
 
       # Evidence that the agent reviewed rather than edited. Advisory, like every
