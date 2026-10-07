@@ -52,5 +52,32 @@ subprojects {
                 }
             }
         }
+
+        // Both Jackson lines Boot 4.1.1 manages carry the same two high
+        // advisories: GHSA-p6pp-m3f8-5c89 (ReDoS, quadratic backtracking in
+        // NumberInput.PATTERN_FLOAT) and GHSA-7hhh-6rmp-j9qf (unbounded
+        // StringBuilder growth in _reportInvalidToken). `dependency-review` runs
+        // with `fail-on-severity: high`, so these fail the gate.
+        //
+        // Jackson 2.x: 2.22.2 is affected, fixed in 2.22.3.
+        // Jackson 3.x: 3.1.5 is inside the affected >=3.0.0,<=3.1.6 range of both
+        // advisories, fixed in 3.1.7. The gate flagged only the 2.x artifact, but
+        // the 3.x one is vulnerable by the same advisories and is raised here
+        // rather than waiting for a scan to catch up.
+        //
+        // Only `jackson-core` is constrained, because only `jackson-core` is
+        // vulnerable. The matching `jackson-databind` and `jackson-annotations`
+        // stay where the Boot BOM puts them: Jackson supports a higher `core`
+        // patch within the same minor, so the suite does not have to move
+        // together the way the three Tomcat embed artifacts do.
+        //
+        // Remove each line once the managed Boot version brings that line to the
+        // patched version or later.
+        dependencies {
+            constraints {
+                add("implementation", "com.fasterxml.jackson.core:jackson-core:2.22.3")
+                add("implementation", "tools.jackson.core:jackson-core:3.1.7")
+            }
+        }
     }
 }

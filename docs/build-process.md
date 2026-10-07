@@ -46,9 +46,18 @@ The build pins its toolchain so every machine produces the same result.
 Two Gradle settings exist for determinism (NFR-001): `org.gradle.parallel=false` and
 `org.gradle.caching=false`.
 
-Tomcat is forced to 11.0.26 by a dependency constraint. Boot 4.1.1 manages 11.0.24, which carries
-three critical advisories. The constraint is temporary and the comment in `build.gradle.kts` says
-when to remove it.
+Two libraries are forced past what Boot 4.1.1 manages, both by Gradle constraints in the root
+`build.gradle.kts`, because the managed versions fail the dependency gate:
+
+| Library | Managed | Forced to | Why |
+|---|---|---|---|
+| Tomcat embed (3 artifacts) | 11.0.24 | 11.0.26 | three critical advisories |
+| `com.fasterxml.jackson.core:jackson-core` | 2.22.2 | 2.22.3 | two high advisories |
+| `tools.jackson.core:jackson-core` | 3.1.5 | 3.1.7 | the same two advisories |
+
+Each constraint is temporary, and the comment beside it says when to remove it. A constraint rather
+than a version property because the Boot BOM is applied as a Gradle platform, which does not honour
+`tomcat.version` and friends; Gradle resolves the higher of the platform's constraint and this one.
 
 `.gitattributes` normalises text files to LF. CI runs on Linux, and a CRLF `gradlew` fails at the
 shebang.
