@@ -183,7 +183,9 @@ test('expectedAgents reads the committed agent files, sorted, ignoring non-Markd
 });
 
 test('the real agent directory is the set the summary expects', () => {
-  delete process.env.AGENTS_DIR;
+  // Resolved from this file, not from the working directory, so the test does not
+  // depend on where it is run from (NFR-001).
+  process.env.AGENTS_DIR = join(import.meta.dirname, '..', '..', '.claude', 'agents');
   const agents = expectedAgents();
   // Guards the wiring, not the count: the spec's standards table owns the set,
   // so this asserts the directory is read, not how many rows that table has.

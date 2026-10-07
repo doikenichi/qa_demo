@@ -124,7 +124,7 @@ Three things make the body edit safe to run on every push:
   right.
 
 Collation is a plain script, not a sixth review agent: it applies no standard and never adds,
-drops, merges, or rewords a finding. `node --test .github/scripts/` runs in the job before it edits
+drops, merges, or rewords a finding. `node --test .github/scripts/*.test.mjs` runs in the job before it edits
 anything.
 
 ## 5. The quality gate

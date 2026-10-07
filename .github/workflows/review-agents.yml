@@ -146,7 +146,7 @@ jobs:
       # is trusted with a body. Not an AI step, so it is safe for it to fail:
       # a broken splice should stop the job, not mangle the pull request.
       - name: Test the collator
-        run: node --test .github/scripts/
+        run: node --test .github/scripts/*.test.mjs
 
       - name: Download every agent's findings
         uses: actions/download-artifact@v6
