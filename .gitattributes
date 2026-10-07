@@ -1,6 +1,6 @@
 # Normalize all text to LF in the repository, whatever the author's platform.
 # CI runs on Linux: a CRLF `gradlew` or shell script fails at the shebang, and
-# Spotless/Prettier see every line as modified. See NFR-012.
+# Spotless/Biome see every line as modified. See NFR-012.
 * text=auto eol=lf
 
 # Scripts that must keep platform-native endings.
