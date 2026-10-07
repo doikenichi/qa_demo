@@ -257,3 +257,32 @@ jobs:
           # fails this job. Remove this line once playwright-bdd updates its
           # glob chain. See the 2026-10-06 row in docs/decisions.md.
           allow-ghsas: GHSA-vfj7-8cjw-p6xm
+
+  # A single required check for branch protection. Run even when a dependency
+  # fails so its result reflects every job above.
+  quality-gate:
+    name: Quality gate
+    runs-on: ubuntu-latest
+    needs:
+      - java-lint
+      - frontend-lint
+      - contract-lint
+      - chart-lint
+      - secret-scan
+      - trivy-scan
+      - sonarcloud
+      - codeql
+      - dependency-review
+    if: ${{ always() }}
+    steps:
+      - name: Check job results
+        env:
+          JOB_RESULTS: ${{ toJSON(needs) }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          jq -e --arg event "$EVENT_NAME" '
+            to_entries | all(.[];
+              .value.result == "success" or
+              (.key == "dependency-review" and $event == "push" and .value.result == "skipped")
+            )
+          ' <<< "$JOB_RESULTS"

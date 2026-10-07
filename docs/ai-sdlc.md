@@ -79,7 +79,7 @@ milestone work proceeds; the rows below cover Milestone 0.
 | `.spectral.yaml` | "Spectral OAS ruleset config extending spectral:oas, operation-operationId as error." | Ken Doi | Yes |
 | `.github/workflows/build.yml` | "GitHub Actions build workflow: JDK 25 Zulu, Node 24, pnpm, Task; runs `task build`." | Ken Doi | Yes |
 | `.github/workflows/test.yml` | "GitHub Actions test workflow: Java tests via Gradle, frontend tests via Vitest; JUnit XML upload." | Ken Doi | Yes |
-| `.github/workflows/gate.yml` | "Quality gate workflow: Spotless, Checkstyle, Biome, tsc, Spectral, helm lint, chart-testing, kubeconform, gitleaks, Trivy, SonarCloud, CodeQL, dependency-review. No retries. No AI evaluator." | Ken Doi | Pending — re-review needed: Biome replaced ESLint and Prettier on 2026-10-06 |
+| `.github/workflows/gate.yml` | "Quality gate workflow: Spotless, Checkstyle, Biome, tsc, Spectral, helm lint, chart-testing, kubeconform, gitleaks, Trivy, SonarCloud, CodeQL, dependency-review. No retries. No AI evaluator." Follow-up: "add quality gate in gate.yml that checks that all jobs were successfull". | Ken Doi | Pending — re-review needed: Biome replaced ESLint and Prettier on 2026-10-06; final job added 2026-10-06 |
 | `.github/workflows/eval-suites.yml` | "Eval suites workflow: promptfoo for each skill; separate withheld-skill-proof job that MUST fail." | Ken Doi | Yes |
 | `.github/workflows/review-agents.yml` | "Review agents workflow: advisory only, always exits 0, posts PR comment including clean runs." | Ken Doi | Yes |
 | `sonar-project.properties` | "SonarCloud config for Java 25, two services, frontend coverage." | Ken Doi | Yes |
