@@ -255,6 +255,59 @@ jobs:
 
       - name: Perform CodeQL analysis
         uses: github/codeql-action/analyze@v4
+        with:
+          # Also keep the SARIF on disk so the next step can gate on it. The
+          # upload to code scanning still happens.
+          output: codeql-results
+
+      # codeql-action/analyze raises code-scanning alerts and exits 0: a finding
+      # does not fail the job, so before this step a planted static-analysis
+      # violation could not fail a pull request at all. NFR-012 item 3 requires
+      # exactly that, so the SARIF is inspected here and the job fails on any
+      # result at or above the threshold. The threshold is stated once, here.
+      - name: Fail on CodeQL findings
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          files=(codeql-results/*.sarif)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "CodeQL produced no SARIF. Failing rather than passing, so a"
+            echo "broken analysis cannot be recorded as a clean run."
+            exit 1
+          fi
+          jq -e '
+            # A SARIF with no runs means the analysis produced nothing. Fail on
+            # it for the same reason a missing file fails: a broken analysis
+            # must not be recorded as a clean run.
+            if (.runs // []) == [] then
+              "CodeQL SARIF contains no runs; failing rather than passing."
+              | halt_error(1)
+            else . end
+            |
+            # security-severity is rule metadata, not result metadata, and the
+            # CodeQL packs arrive as tool extensions rather than on the driver,
+            # so both are collected before results are matched to them by id.
+            ( [ .runs[]?
+                | ( (.tool.driver.rules // [])
+                    + ( [ .tool.extensions[]? | (.rules // []) ] | add // [] ) )[]
+              ]
+              | map({ key: .id,
+                      value: ((.properties["security-severity"] // "0") | tonumber) })
+              | from_entries
+            ) as $severity
+            | [ .runs[]?.results[]?
+                | select( ($severity[(.ruleId // "")] // 0) >= 7.0 or .level == "error" )
+              ] as $blocking
+            | if ($blocking | length) > 0 then
+                ( "CodeQL gate failure: "
+                  + ($blocking | length | tostring)
+                  + " finding(s) at or above the threshold. Rules: "
+                  + ($blocking | map(.ruleId // "unknown") | unique | join(", ")) )
+                | halt_error(1)
+              else
+                "CodeQL: no finding at or above the threshold (security-severity >= 7.0, or level error)."
+              end
+          ' "${files[@]}"
 
   # ── Dependency review (PRs only) ─────────────────────────────────────────────
   dependency-review:
