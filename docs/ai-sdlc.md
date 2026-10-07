@@ -95,6 +95,7 @@ milestone work proceeds; the rows below cover Milestone 0.
 | `Taskfile.yml` | "Single Taskfile with build, test, lint, format, helm-lint tasks delegating to Gradle and pnpm." | Ken Doi | Pending |
 | `docs/requirements/NFR-012.md` | "Acceptance criteria, test cases, evidence table for NFR-012." | Ken Doi | Yes |
 | `docs/ai-sdlc.md` (this file) | "Artifact log and AI governance record as required by NFR-012 AC-4." | Ken Doi | Yes |
+| Root `build.gradle.kts` plugin classpath constraint and `docs/build-process.md` explanation | The pasted dependency-review output for PR #1: `settings.gradle.kts » tools.jackson.core:jackson-core@3.1.5`, with GHSA-p6pp-m3f8-5c89 and GHSA-7hhh-6rmp-j9qf. Trace the remaining 3.1.5 source and fix the build dependency graph without lowering the gate. | Ken Doi | Pending — AI-drafted; local `buildEnvironment` and `build` passed, CI dependency review still to be verified |
 
 ---
 

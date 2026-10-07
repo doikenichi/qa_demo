@@ -5,6 +5,16 @@ plugins {
 }
 
 subprojects {
+    // The Spring Boot Gradle plugin also brings in Jackson 3.x. Application
+    // dependency constraints do not apply to the buildscript classpath.
+    buildscript {
+        dependencies {
+            constraints {
+                add("classpath", "tools.jackson.core:jackson-core:3.1.7")
+            }
+        }
+    }
+
     // Only the leaf service modules carry Java. `:services` is a grouping
     // project with no sources, and Spotless cannot configure a Java task there.
     plugins.withId("java") {

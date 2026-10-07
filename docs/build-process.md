@@ -58,6 +58,9 @@ Two libraries are forced past what Boot 4.1.1 manages, both by Gradle constraint
 Each constraint is temporary, and the comment beside it says when to remove it. A constraint rather
 than a version property because the Boot BOM is applied as a Gradle platform, which does not honour
 `tomcat.version` and friends; Gradle resolves the higher of the platform's constraint and this one.
+The Spring Boot Gradle plugin also brings in Jackson 3.x on the buildscript classpath. That classpath
+has its own `jackson-core` 3.1.7 constraint; the services' `implementation` constraint cannot affect
+it. `buildEnvironment` confirms the plugin classpath resolves to 3.1.7 in both services.
 
 `.gitattributes` normalises text files to LF. CI runs on Linux, and a CRLF `gradlew` fails at the
 shebang.
