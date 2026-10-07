@@ -102,8 +102,7 @@ paths:
                       code: slot_unavailable
                       message: "This slot is not available."
                       details:
-                        - field: slotStart
-                          issue: not_in_future
+                        - reason: not_in_future
                 idempotency_key_reuse:
                   value:
                     error:
@@ -503,7 +502,9 @@ components:
                 detail), and booking_not_completable (reason detail).
                 Entries sorted by field then issue, both lexicographically.
               items:
-                $ref: "#/components/schemas/ValidationDetail"
+                oneOf:
+                  - $ref: "#/components/schemas/ValidationDetail"
+                  - $ref: "#/components/schemas/ReasonDetail"
 
     ValidationDetail:
       type: object
@@ -537,6 +538,31 @@ components:
             Stable snake_case issue code from the closed 15-item list. Adding
             a code requires a spec change first, then a contract change — never
             invented at a call site. See Error responses section of the spec.
+
+    ReasonDetail:
+      type: object
+      required: [reason]
+      additionalProperties: false
+      description: >
+        The single detail entry carried by slot_unavailable and
+        booking_not_completable. Distinct from ValidationDetail: a reason
+        explains why an otherwise valid request cannot be honoured, so it
+        names no caller field. See Error responses, Availability window
+        (slot reasons) and Completion (completion reasons) in the spec.
+      properties:
+        reason:
+          type: string
+          enum:
+            - not_in_future
+            - outside_window
+            - already_booked
+            - not_started
+            - already_cancelled
+            - already_completed
+          description: >
+            Stable snake_case reason. The first three belong to
+            slot_unavailable, the last three to booking_not_completable; no
+            response mixes the two sets.
 
   responses:
     ValidationError:

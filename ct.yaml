@@ -1,8 +1,26 @@
+# chart-testing configuration. Milestone 0 is lint-only: install tests need a
+# running cluster, which arrives at milestone 5.
+
+# The directory that CONTAINS the charts, not a chart itself.
 chart-dirs:
-  - charts/booking-service
-  - charts/notification-service
+  - charts
+
+# The library chart is a template-only dependency with no values.yaml of its
+# own; it is exercised through the two service charts that consume it.
+excluded-charts:
+  - library
+
+target-branch: main
+
+# Lint-only at milestone 0. Both defaults are off deliberately:
+#  - maintainer validation would require personal contact data in the tree;
+#  - version-increment checking compares against the target branch, which makes
+#    the result depend on diff detection rather than on the charts themselves.
+validate-maintainers: false
+check-version-increment: false
 
 helm-extra-args: "--timeout 60s"
 
-# Linting only at milestone 0 — install tests require a running cluster (milestone 5+).
-lint-conf: {}
+# `lint-conf` is deliberately absent. It takes a *path* to a yamllint config;
+# the `lint-conf: {}` carried over from the first draft was a map, which ct
+# cannot unmarshal. Omitting it lets ct use its own default lookup.

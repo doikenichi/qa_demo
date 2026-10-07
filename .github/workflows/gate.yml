@@ -8,16 +8,21 @@ on:
 # No automatic retries anywhere in CI — NFR-001.
 # Each job below must be proven to fail on a planted violation (NFR-012 item 3).
 
+# Least privilege by default; the jobs that need more (Trivy and CodeQL upload
+# to code scanning) declare it themselves, which replaces this block for them.
+permissions:
+  contents: read
+
 jobs:
   # ── Java formatting and style ────────────────────────────────────────────────
   java-lint:
     name: Spotless + Checkstyle
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up JDK 25 (Zulu)
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           java-version: "25"
           distribution: zulu
@@ -31,45 +36,51 @@ jobs:
 
   # ── Frontend formatting and types ────────────────────────────────────────────
   frontend-lint:
-    name: ESLint + Prettier + tsc
+    name: Biome + tsc
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "24"
 
       - name: Set up pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: latest
+        uses: pnpm/action-setup@v6
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: ESLint
-        run: pnpm --filter frontend lint
+      # Biome replaces ESLint and Prettier: one tool, one pass, covering both
+      # the frontend and the e2e package from the root biome.json. `biome ci`
+      # checks formatting, lint rules and import order without writing.
+      #
+      # The script passes --error-on-warnings, which is load-bearing: Biome
+      # reports several recommended rules (noNonNullAssertion among them) as
+      # warnings, and plain `biome ci` exits 0 on a warning. Without the flag a
+      # planted static-analysis violation does NOT fail the gate, which NFR-012
+      # requires it to. It is the equivalent of the `--max-warnings 0` that the
+      # replaced ESLint invocation carried.
+      - name: Biome (format + lint)
+        run: pnpm run lint
 
-      - name: Prettier check
-        run: pnpm --filter frontend format:check
-
+      # Biome does not type-check; tsc still owns that.
       - name: TypeScript type check
-        run: pnpm --filter frontend typecheck
+        run: pnpm --filter appointment-booking-frontend type-check
 
       - name: E2E TypeScript check
-        run: pnpm --filter e2e typecheck
+        run: pnpm --filter appointment-booking-e2e type-check
 
   # ── Contract lint ─────────────────────────────────────────────────────────────
   contract-lint:
     name: Spectral (OpenAPI contract)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "24"
 
@@ -84,26 +95,38 @@ jobs:
     name: helm lint + chart-testing + kubeconform
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Set up Helm
-        uses: azure/setup-helm@v4
+        uses: azure/setup-helm@v5
         with:
-          version: latest
+          version: v3.19.0
 
       - name: Set up chart-testing
         uses: helm/chart-testing-action@v2
 
+      # Without this, the service charts cannot resolve the shared library
+      # chart and `appointment-booking.fullname` is undefined at lint time.
+      # Chart.lock is committed, so `build` pins rather than re-resolves.
+      - name: Resolve chart dependencies
+        run: |
+          helm dependency build charts/booking-service
+          helm dependency build charts/notification-service
+          helm dependency build charts/appointment-booking
+
       - name: Run helm lint
         run: |
+          helm lint charts/library
           helm lint charts/appointment-booking
           helm lint charts/booking-service
           helm lint charts/notification-service
 
+      # --all rather than diff detection: the gate must not depend on which
+      # files a pull request happened to touch.
       - name: Run chart-testing lint
-        run: ct lint --config ct.yaml
+        run: ct lint --config ct.yaml --all
 
       - name: Install kubeconform
         run: |
@@ -120,12 +143,12 @@ jobs:
     name: gitleaks (secret scanning)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Run gitleaks
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -133,11 +156,16 @@ jobs:
   trivy-scan:
     name: Trivy (dependency + filesystem)
     runs-on: ubuntu-latest
+    # upload-sarif writes to the code-scanning API; without this the upload is
+    # rejected. The scan step itself is what gates (exit-code: 1 on HIGH/CRITICAL).
+    permissions:
+      contents: read
+      security-events: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Run Trivy filesystem scan
-        uses: aquasecurity/trivy-action@v0.30.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
           scan-ref: .
@@ -147,7 +175,7 @@ jobs:
           exit-code: "1"
 
       - name: Upload Trivy results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: trivy-results.sarif
@@ -157,22 +185,43 @@ jobs:
     name: SonarCloud static analysis
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Set up JDK 25 (Zulu)
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           java-version: "25"
           distribution: zulu
           cache: gradle
 
-      - name: Build and collect coverage
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build and collect Java coverage
         run: ./gradlew build jacocoTestReport
 
+      # sonar-project.properties reads frontend/coverage/lcov.info. Nothing in
+      # this job wrote it before, so the frontend was analysed with no coverage
+      # data at all. Coverage is published, never gated (NFR-009).
+      - name: Collect frontend coverage
+        run: pnpm --filter appointment-booking-frontend test:coverage
+
+      # SonarSource/sonarcloud-github-action is archived and deprecated; this is
+      # its named replacement. With SONAR_HOST_URL unset the scanner targets
+      # SonarQube Cloud (sonarcloud.io), so the organization and project key
+      # still come from sonar-project.properties.
       - name: SonarCloud scan
-        uses: SonarSource/sonarcloud-github-action@v3
+        uses: SonarSource/sonarqube-scan-action@v8
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -186,25 +235,26 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up JDK 25 (Zulu)
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           java-version: "25"
           distribution: zulu
           cache: gradle
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: java
+          build-mode: manual
 
       - name: Build for CodeQL
         run: ./gradlew compileJava
 
       - name: Perform CodeQL analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
 
   # ── Dependency review (PRs only) ─────────────────────────────────────────────
   dependency-review:
@@ -212,9 +262,49 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Dependency review
-        uses: actions/dependency-review-action@v4
+        uses: actions/dependency-review-action@v5
         with:
           fail-on-severity: high
+          # One documented exception, not a blanket lowering of the threshold.
+          # GHSA-vfj7-8cjw-p6xm (braces, stack exhaustion via deeply nested
+          # patterns) has NO upstream fix: the advisory reports
+          # `patched: <0.0.0`, and braces 3.0.3 is both the latest release and
+          # the vulnerable one. It reaches the tree only as a dev-only
+          # transitive dependency of the E2E runner
+          # (playwright-bdd > fast-glob > micromatch > braces) and is in no
+          # shipped artifact. Every other high and critical advisory still
+          # fails this job. Remove this line once playwright-bdd updates its
+          # glob chain. See the 2026-10-06 row in docs/decisions.md.
+          allow-ghsas: GHSA-vfj7-8cjw-p6xm
+
+  # A single required check for branch protection. Run even when a dependency
+  # fails so its result reflects every job above.
+  quality-gate:
+    name: Quality gate
+    runs-on: ubuntu-latest
+    needs:
+      - java-lint
+      - frontend-lint
+      - contract-lint
+      - chart-lint
+      - secret-scan
+      - trivy-scan
+      - sonarcloud
+      - codeql
+      - dependency-review
+    if: ${{ always() }}
+    steps:
+      - name: Check job results
+        env:
+          JOB_RESULTS: ${{ toJSON(needs) }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          jq -e --arg event "$EVENT_NAME" '
+            to_entries | all(.[];
+              .value.result == "success" or
+              (.key == "dependency-review" and $event == "push" and .value.result == "skipped")
+            )
+          ' <<< "$JOB_RESULTS"

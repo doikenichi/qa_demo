@@ -34,3 +34,53 @@ allure-report/
 # k6
 k6-output/
 ignorme.md
+
+# Helm vendored subcharts — resolved from the committed Chart.lock in CI.
+charts/*/charts/
+
+# IDE-driven Java output. Eclipse and the VS Code Java extension compile to
+# bin/ rather than build/, which `build/` above does not cover. Only *.class
+# was ignored, so the resources they copy alongside (bin/main/application.yml)
+# were not — and a `git add -A` duly staged them. Never committed; caught
+# before the first commit of this work.
+bin/
+
+# Gradle Kotlin DSL scratch directory.
+.kotlin/
+
+# JVM crash and replay dumps.
+hs_err_pid*.log
+replay_pid*.log
+*.hprof
+
+# TypeScript incremental build metadata.
+*.tsbuildinfo
+
+# Coverage output. sonar-project.properties reads frontend/coverage/lcov.info,
+# and jacoco writes under build/, which is already ignored.
+coverage/
+
+# Test and scan reports written into the tree by CI, and by the local
+# verification steps in docs/requirements/NFR-012.md.
+vitest-results.xml
+trivy-results.sarif
+eval-results-*.json
+withheld-results-*.json
+
+# Written into the workspace by the review-agents summary job: the collated
+# block, the rewritten pull request body, and each agent's findings file.
+review-summary.md
+pr-body.md
+review-findings/
+
+# Claude Code per-machine settings. Previously ignored only by a global
+# ~/.config/git/ignore on one developer's machine, so the repository carried no
+# guarantee of its own.
+.claude/settings.local.json
+
+# Local environment overrides. The committed placeholder is .env.example.
+.env.local
+.env.*.local
+
+# Personal scratch file.
+ignorme.md

@@ -1,21 +1,20 @@
-description: "Withheld-skill proof for code-standard — must fail"
+# Withheld-skill proof for code-standard. Identical to promptfooconfig.yaml except that
+# the system prompt is a generic assistant with none of the project's standards.
+# This MUST fail: if it passes, the suite is measuring the model rather than the
+# artifact (NFR-012 item 1). Verified by .claude/evals/verify-withheld.mjs, which
+# also rejects a run that merely errored.
 
+description: Withheld-skill proof for code-standard — must fail
 providers:
-  - id: anthropic:messages:claude-sonnet-4-6
+  - id: "exec: node ../claude-provider.mjs"
     config:
-      max_tokens: 400
-
+      systemPromptFile: .claude/evals/withheld-system-prompt.txt
 prompts:
   - "{{user_message}}"
-
 tests:
   - description: "WITHHELD SKILL — must fail: model doesn't know the specific issue code name"
     vars:
-      user_message: "A booking request arrives with slotStart set to 2026-06-10T09:00:00.500Z. What issue code should the validation error use?"
-    options:
-      provider:
-        config:
-          system: "You are a helpful software engineering assistant."
+      user_message: A booking request arrives with slotStart set to 2026-06-10T09:00:00.500Z. What issue code should the validation error use?
     assert:
       - type: contains
-        value: "fractional_seconds"
+        value: fractional_seconds

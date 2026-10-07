@@ -779,7 +779,7 @@ The stack is chosen; every row below is recorded in the [decisions log](#context
 | E2E | Playwright with `playwright-bdd`, in TypeScript | The best-supported Playwright API, sharing the frontend's tooling, with Gherkin that still reads as acceptance criteria. |
 | Load | k6 as the gate and the recorded baseline; one equivalent JMeter plan as a second artifact | k6 is scriptable, diff-reviewable, and runs unattended in CI. The JMeter plan covers the same scenario for breadth and runs locally, non-blocking, so there is one gate and not two. |
 | Telemetry | OpenTelemetry SDK and Java agent; hosted OTLP backend for dashboards; in-memory exporter in tests | Instrumentation is vendor-neutral, so the backend can change without touching code. Assertions never leave the process — see [Telemetry](#telemetry). |
-| Quality gate | Spotless and Checkstyle; ESLint, Prettier, and `tsc --strict`; Spectral; `helm lint`, chart-testing, kubeconform; gitleaks; Trivy; hosted static analysis; CodeQL; dependency alerts | Each one fails a pull request on a planted violation, which is what [NFR-012](#non-functional-requirements) requires of it. |
+| Quality gate | Spotless and Checkstyle; Biome and `tsc --strict`; Spectral; `helm lint`, chart-testing, kubeconform; gitleaks; Trivy; hosted static analysis; CodeQL; dependency alerts | Each one fails a pull request on a planted violation, which is what [NFR-012](#non-functional-requirements) requires of it. |
 | Reporting | ReportPortal, self-hosted in the persistent cluster; Allure published to Pages; CTRF as the one normalised result format across JUnit, Vitest, and Playwright | A portal needs history, so it cannot live in an ephemeral cluster; Allure needs no account, so a reviewer can read a run without one; one normalised format means the metrics need one parser rather than three. |
 | Quality metrics | Emitted over OTLP into the same dashboards as the product telemetry | A quality trend and a system trend are read together, and no new component is introduced to hold them. |
 | CI | GitHub Actions | One pipeline, the same command string as the README ([NFR-007](#non-functional-requirements)). |
@@ -1035,7 +1035,7 @@ The chosen tool for each job, with its tradeoff, is in [Tooling](#tooling); the 
 | End-to-end | Playwright with `playwright-bdd`, in TypeScript |
 | Load and performance | k6 as the gate and the baseline source; one JMeter plan as a non-blocking second artifact |
 | Telemetry assertions | OpenTelemetry in-memory exporter, inside the test process |
-| Static quality gate | Spotless, Checkstyle, ESLint, Prettier, `tsc --strict`, Spectral, `helm lint`, chart-testing, kubeconform, gitleaks, Trivy, hosted static analysis, CodeQL, dependency alerts |
+| Static quality gate | Spotless, Checkstyle, Biome, `tsc --strict`, Spectral, `helm lint`, chart-testing, kubeconform, gitleaks, Trivy, hosted static analysis, CodeQL, dependency alerts |
 | Reporting | ReportPortal for run history and triage; Allure published for a readable run; dashboards for the metric series |
 | Environments | Helm on `kind` in CI, and k3d with ArgoCD for the shared environment |
 

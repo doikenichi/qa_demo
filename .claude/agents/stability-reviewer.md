@@ -47,4 +47,4 @@ Permitted only inside the clock adapter that wraps the injection point.
 - Non-final static fields in test classes
 - A singleton or application-context bean mutated inside a test without reset
 
-For each finding: quote the diff line, name the NFR-001 rule it breaks, and state what the correct approach is (injected clock, bounded condition with recorded attempt count, etc.).
+Report in the one-line shape the invoking prompt specifies: one finding per line, no prose, no diff quotes, no restating the rule.

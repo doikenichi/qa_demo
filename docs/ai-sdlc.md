@@ -79,21 +79,23 @@ milestone work proceeds; the rows below cover Milestone 0.
 | `.spectral.yaml` | "Spectral OAS ruleset config extending spectral:oas, operation-operationId as error." | Ken Doi | Yes |
 | `.github/workflows/build.yml` | "GitHub Actions build workflow: JDK 25 Zulu, Node 24, pnpm, Task; runs `task build`." | Ken Doi | Yes |
 | `.github/workflows/test.yml` | "GitHub Actions test workflow: Java tests via Gradle, frontend tests via Vitest; JUnit XML upload." | Ken Doi | Yes |
-| `.github/workflows/gate.yml` | "Quality gate workflow: Spotless, Checkstyle, ESLint, Prettier, tsc, Spectral, helm lint, chart-testing, kubeconform, gitleaks, Trivy, SonarCloud, CodeQL, dependency-review. No retries. No AI evaluator." | Ken Doi | Yes |
+| `.github/workflows/gate.yml` | "Quality gate workflow: Spotless, Checkstyle, Biome, tsc, Spectral, helm lint, chart-testing, kubeconform, gitleaks, Trivy, SonarCloud, CodeQL, dependency-review. No retries. No AI evaluator." Follow-up: "add quality gate in gate.yml that checks that all jobs were successfull". | Ken Doi | Pending — re-review needed: Biome replaced ESLint and Prettier on 2026-10-06; final job added 2026-10-06 |
 | `.github/workflows/eval-suites.yml` | "Eval suites workflow: promptfoo for each skill; separate withheld-skill-proof job that MUST fail." | Ken Doi | Yes |
 | `.github/workflows/review-agents.yml` | "Review agents workflow: advisory only, always exits 0, posts PR comment including clean runs." | Ken Doi | Yes |
-| `sonar-project.properties` | "SonarCloud config for Java 25, two services, frontend coverage." | Ken Doi | Yes |
+| `sonar-project.properties` | "SonarCloud config for Java 25, two services, frontend coverage." Follow-up 2026-10-07: "for now remove the default coverage and plan to remove once development is started" — after the free plan was found to forbid a custom quality gate. | Ken Doi | Pending — the project-key correction and the milestone 0 `sonar.coverage.exclusions` block are AI-drafted and await review; the direction is Ken Doi's, recorded as a proposed row in `docs/decisions.md` |
+| Frontend coverage reporting (`frontend/vite.config.ts` coverage block, `frontend/package.json` `test:coverage`, the `sonarcloud` job in `.github/workflows/gate.yml`) | The pasted SonarCloud output "Failed conditions / 0.0% Coverage on New Code (required ≥ 80%)". Two reporting defects found behind it: `frontend/coverage/lcov.info` was configured but never written, and LCOV records needed the `frontend/` prefix to resolve. | Ken Doi | Pending — the reporting fixes are AI-drafted and await review; dropping the coverage condition from the gate is Ken Doi's decision, recorded in `docs/decisions.md` |
 | `charts/` (umbrella + library + two service charts) | "Helm charts: umbrella with dependencies, library with common helpers, booking-service and notification-service deployments. Secrets injected via secretKeyRef." | Ken Doi | Yes |
 | `.claude/skills/*.md` (9 files) | "Write the nine engineering skills per the standards-artifacts table in the spec. Each cites the spec; none becomes a copy of it." | Ken Doi | Pending |
 | `.claude/agents/*.md` (5 files) | "Write the five review agent definitions. Advisory only; each must explicitly state it never blocks a merge." | Ken Doi | Pending |
 | `.claude/evals/*/promptfooconfig*.yaml` (9 suites × 2) | "Write promptfoo eval suites for each skill using only contains/not-contains/regex assertions (no llm-rubric). One withheld-skill config per skill." | Ken Doi | Pending |
-| `services/booking-service/` skeleton | "Spring Boot 3.4.x, Java 25, OTel wiring, Spotless+Checkstyle, no product behavior." | Ken Doi | Pending |
-| `services/notification-service/` skeleton | "Spring Boot 3.4.x, Java 25, OTel wiring, Kafka consumer skeleton, no product behavior." | Ken Doi | Pending |
-| `frontend/` skeleton | "Vite + React + TypeScript, strict tsc, ESLint + Prettier, no product behavior." | Ken Doi | Pending |
+| `services/booking-service/` skeleton | "Spring Boot 3.4.x, Java 25, OTel wiring, Spotless+Checkstyle, no product behavior." | Ken Doi | Pending — the prompt is recorded as issued; the toolchain row of 2026-10-06 amended it to Spring Boot 4.1.1, which the skeleton now builds against |
+| `services/notification-service/` skeleton | "Spring Boot 3.4.x, Java 25, OTel wiring, Kafka consumer skeleton, no product behavior." | Ken Doi | Pending — the prompt is recorded as issued; the toolchain row of 2026-10-06 amended it to Spring Boot 4.1.1, which the skeleton now builds against |
+| `frontend/` skeleton | "Vite + React + TypeScript, strict tsc, Biome, no product behavior." | Ken Doi | Pending |
 | `e2e/` skeleton | "Playwright + playwright-bdd, TypeScript strict, no product behavior." | Ken Doi | Pending |
 | `Taskfile.yml` | "Single Taskfile with build, test, lint, format, helm-lint tasks delegating to Gradle and pnpm." | Ken Doi | Pending |
 | `docs/requirements/NFR-012.md` | "Acceptance criteria, test cases, evidence table for NFR-012." | Ken Doi | Yes |
 | `docs/ai-sdlc.md` (this file) | "Artifact log and AI governance record as required by NFR-012 AC-4." | Ken Doi | Yes |
+| Root `build.gradle.kts` plugin classpath constraint and `docs/build-process.md` explanation | The pasted dependency-review output for PR #1: `settings.gradle.kts » tools.jackson.core:jackson-core@3.1.5`, with GHSA-p6pp-m3f8-5c89 and GHSA-7hhh-6rmp-j9qf. Trace the remaining 3.1.5 source and fix the build dependency graph without lowering the gate. | Ken Doi | Pending — AI-drafted; local `buildEnvironment` and `build` passed, CI dependency review still to be verified |
 
 ---
 

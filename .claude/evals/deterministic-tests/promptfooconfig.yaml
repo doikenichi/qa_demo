@@ -1,31 +1,27 @@
+# Eval suite for the deterministic-tests skill.
+# The provider loads .claude/skills/deterministic-tests.md itself as the system prompt, so this
+# suite is bound to the committed artifact: delete or weaken that file and this
+# suite stops passing. Assertions are contains/not-contains only — no LLM judge.
+
 description: Eval suite for deterministic-tests skill
-
 providers:
-  - id: anthropic:messages:claude-sonnet-4-6
+  - id: "exec: node ../claude-provider.mjs"
     config:
-      max_tokens: 400
-
+      systemPromptFile: .claude/skills/deterministic-tests.md
 prompts:
   - "{{user_message}}"
-
 tests:
-  - description: "With skill: uses injected clock for cancellation boundary test"
+  - description: "With skill: bounded wait with a recorded attempt count, no sleep, no retry"
     vars:
-      user_message: "I need to write a test that verifies cancellation is refused at exactly slotStart. How should I control time in this test?"
-    options:
-      provider:
-        config:
-          system: |
-            You are an AI assistant working on the appointment-booking project.
-
-            Deterministic tests rules:
-            - Always use an injected clock. Never call Instant.now(), LocalDateTime.now(),
-              System.currentTimeMillis(), or new Date() in production or test code.
-            - In tests, construct the injected clock at a fixed instant and advance it explicitly.
-            - Every boundary test advances the injected clock, not the wall clock.
-            - No Thread.sleep() or fixed delays as synchronisation.
+      user_message: A test that waits for notification-service to write a notification record sometimes passes and sometimes fails. What does this project require me to do about it, and what exactly must the wait look like?
     assert:
-      - type: contains
-        value: "injected clock"
-      - type: not-contains
-        value: "System.currentTimeMillis"
+      # Chosen by measurement. The clock-API question this replaced could be
+      # answered correctly by chance: a generic assistant that happens to pick
+      # Java mentions Instant.now() too, so the withheld case failed only 2 of
+      # 3 runs — not evidence under NFR-001.
+      #
+      # "recorded attempt count" is this project's own requirement for a
+      # bounded wait. A generic assistant reaches for a retry, a sleep, or
+      # Awaitility and does not require the attempt count be recorded.
+      - type: icontains
+        value: attempt count

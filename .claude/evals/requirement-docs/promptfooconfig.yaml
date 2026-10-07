@@ -1,27 +1,19 @@
+# Eval suite for the requirement-docs skill.
+# The provider loads .claude/skills/requirement-docs.md itself as the system prompt, so this
+# suite is bound to the committed artifact: delete or weaken that file and this
+# suite stops passing. Assertions are contains/not-contains only — no LLM judge.
+
 description: Eval suite for requirement-docs skill
-
 providers:
-  - id: anthropic:messages:claude-sonnet-4-6
+  - id: "exec: node ../claude-provider.mjs"
     config:
-      max_tokens: 400
-
+      systemPromptFile: .claude/skills/requirement-docs.md
 prompts:
   - "{{user_message}}"
-
 tests:
   - description: "With skill: produces TC-FR ID format for a new test case"
     vars:
-      user_message: "I'm writing the verification plan for FR-001. What ID should I assign to the first test case that verifies the 7-day window boundary?"
-    options:
-      provider:
-        config:
-          system: |
-            You are an AI assistant working on the appointment-booking project.
-
-            Requirement docs — TC ID format:
-            Test case IDs follow the format TC-FR-<number>-<sequence> or TC-NFR-<number>-<sequence>.
-            Examples: TC-FR-001-1 for the first test of FR-001, TC-FR-004-2 for the second of FR-004.
-            IDs are stable once assigned — a deleted test leaves a gap rather than causing a renumber.
+      user_message: I'm writing the verification plan for FR-001. What ID should I assign to the first test case that verifies the 7-day window boundary?
     assert:
       - type: contains
-        value: "TC-FR-001-1"
+        value: TC-FR-001-1

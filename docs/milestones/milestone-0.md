@@ -318,9 +318,9 @@ The following user actions unblock the remaining clauses:
 
 1. Create a GitHub repository and run `git remote add origin <url>`.
 2. Make an initial commit (`git add --all && git commit`) and push to trigger CI.
-3. Add GitHub Actions secrets: `ANTHROPIC_API_KEY`, `SONAR_TOKEN`, `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_HEADERS`.
-4. Update `sonar.organization` in `sonar-project.properties` with the SonarCloud org slug.
-5. Set up branch protection on `main` (require PR, require gate CI checks).
+3. Run `claude setup-token` and add its output as the `CLAUDE_CODE_OAUTH_TOKEN` GitHub Actions secret, then add `SONAR_TOKEN`, `OTEL_EXPORTER_OTLP_ENDPOINT`, and `OTEL_EXPORTER_OTLP_HEADERS`. The eval suites and the review agents authenticate with the subscription token; no `ANTHROPIC_API_KEY` is used anywhere. The status cells above predate that change and are superseded by the re-run of this review required at step 8.
+4. Confirm the SonarCloud project. `sonar.projectKey` is `doikenichi_qa_demo` — the key SonarCloud auto-provisions for a GitHub-bound organization — and `sonar.organization` is `doikenichi`. If a second project exists under any other key, delete it: two projects analysing one repository post two pull-request checks. Verify **Administration → Analysis Method** has automatic analysis **off**, since CI-based analysis and automatic analysis cannot both run against one project. The custom quality gate this step previously called for is **not available**: the organization is on the free plan, where `GET /api/qualitygates/list` returns `actions.create: false` and the built-in `Sonar way` gate reports `manageConditions: false`. Coverage import is withheld for the milestone 0 placeholders instead, via `sonar.coverage.exclusions` in `sonar-project.properties`; a gate condition with no imported data is not applied. See the quality-gate rows of 2026-10-06 and 2026-10-07 in `docs/decisions.md`.
+5. Set up branch protection on `main` (require PR, require gate CI checks). Require the `Quality gate` job from `gate.yml` — not SonarCloud's own app check, which reports analysis status rather than this project's gate.
 6. Create one proof branch per planted-violation kind, open a PR for each, verify the gate fails, close without merging. Link each closed PR into `docs/requirements/NFR-012.md`'s evidence table.
 7. Open a PR carrying any small change, verify `review-agents.yml` posts a comment, close.
 8. Re-run this exit review once all six remaining clauses are green.

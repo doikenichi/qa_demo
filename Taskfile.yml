@@ -1,9 +1,19 @@
 version: '3'
 
+# `task build` is the one command the milestone 0 exit row requires, and it is
+# green on the Linux CI runner. On a Windows host Task's shell does not accept
+# `./gradlew`; run `gradlew.bat` directly there, or run Task from WSL.
+
 tasks:
   build:
     desc: Build all four pieces — both services, frontend, and E2E package.
-    deps: [build:services, build:frontend, build:e2e]
+    # Sequential, and install first: the exit row asks that one command build
+    # all four pieces from a clean clone, where node_modules does not exist.
+    cmds:
+      - task: install
+      - task: build:services
+      - task: build:frontend
+      - task: build:e2e
 
   build:services:
     desc: Compile both Java services.
@@ -24,17 +34,28 @@ tasks:
     desc: Run all linters.
     deps: [lint:java, lint:frontend, lint:contracts, lint:helm]
 
+  lint:helm:deps:
+    desc: Resolve chart dependencies so helm lint and template can run.
+    cmds:
+      - helm dependency build charts/library
+      - helm dependency build charts/booking-service
+      - helm dependency build charts/notification-service
+      - helm dependency build charts/appointment-booking
+
   lint:java:
     desc: Run Spotless check and Checkstyle.
     cmds:
       - ./gradlew spotlessCheck checkstyleMain checkstyleTest
 
   lint:frontend:
-    desc: Run ESLint, Prettier check, and tsc on frontend.
+    desc: Run Biome (format + lint) over frontend and e2e, then tsc on both.
     cmds:
-      - pnpm --filter appointment-booking-frontend run lint
-      - pnpm --filter appointment-booking-frontend run format:check
+      # Biome replaces ESLint and Prettier and covers both packages from the
+      # root config. `ci` checks without writing. Type checking stays with tsc:
+      # Biome does not type-check.
+      - pnpm run lint
       - pnpm --filter appointment-booking-frontend run type-check
+      - pnpm --filter appointment-booking-e2e run type-check
 
   lint:contracts:
     desc: Spectral OpenAPI lint.
@@ -52,7 +73,7 @@ tasks:
     desc: Apply all formatters.
     cmds:
       - ./gradlew spotlessApply
-      - pnpm --filter appointment-booking-frontend run format
+      - pnpm run format
 
   test:
     desc: Run all tests (unit + integration).
@@ -60,6 +81,6 @@ tasks:
       - ./gradlew test
 
   install:
-    desc: Install all Node dependencies.
+    desc: Install all Node dependencies from the committed lockfile.
     cmds:
-      - pnpm install
+      - pnpm install --frozen-lockfile

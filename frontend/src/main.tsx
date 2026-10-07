@@ -1,11 +1,13 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { App } from './App';
 
-function App() {
-  return <div>Appointment Booking — Milestone 0 placeholder</div>;
+const rootElement = document.getElementById('root');
+if (!rootElement) {
+  throw new Error('Mount point #root is missing from index.html');
 }
 
-createRoot(document.getElementById('root')!).render(
+createRoot(rootElement).render(
   <StrictMode>
     <App />
   </StrictMode>,

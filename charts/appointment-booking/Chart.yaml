@@ -14,17 +14,9 @@ dependencies:
   - name: notification-service
     version: "0.1.0"
     repository: "file://../notification-service"
-  - name: postgresql
-    version: "16.2.3"
-    repository: "https://charts.bitnami.com/bitnami"
-    alias: booking-db
-  - name: postgresql
-    version: "16.2.3"
-    repository: "https://charts.bitnami.com/bitnami"
-    alias: notification-db
-  - name: redis
-    version: "20.2.1"
-    repository: "https://charts.bitnami.com/bitnami"
-  - name: kafka
-    version: "32.1.0"
-    repository: "https://charts.bitnami.com/bitnami"
+# Infrastructure subcharts (booking-db, notification-db, redis, kafka) arrive at
+# milestone 5, which is where the exit criteria place installing this chart over
+# Postgres, Redis, and Kafka. Milestone 0 only requires the base chart to lint.
+# They are deliberately not pinned here: the upstream index prunes older chart
+# versions, so a pin chosen now would be unresolvable by the time it is used.
+# Their values are staged, commented, in values.yaml.

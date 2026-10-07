@@ -1,28 +1,19 @@
+# Eval suite for the tdd-cycle skill.
+# The provider loads .claude/skills/tdd-cycle.md itself as the system prompt, so this
+# suite is bound to the committed artifact: delete or weaken that file and this
+# suite stops passing. Assertions are contains/not-contains only — no LLM judge.
+
 description: Eval suite for tdd-cycle skill
-
 providers:
-  - id: anthropic:messages:claude-sonnet-4-6
+  - id: "exec: node ../claude-provider.mjs"
     config:
-      max_tokens: 400
-
+      systemPromptFile: .claude/skills/tdd-cycle.md
 prompts:
   - "{{user_message}}"
-
 tests:
   - description: "With skill: names TC-FR ID format for a test case"
     vars:
-      user_message: "I'm writing a test that verifies cancellation at exactly slotStart is refused. It's the second test case for FR-006. What should I name it and what ID should it carry?"
-    options:
-      provider:
-        config:
-          system: |
-            You are an AI assistant working on the appointment-booking project.
-
-            TDD cycle rules:
-            - Every test carries its requirement ID in the format TC-FR-<number>-<sequence> or TC-NFR-<number>-<sequence>.
-            - Tests are named for the behavior they verify, not the implementation.
-            - Example: TC-FR-006-2 for the second test of FR-006.
-            - In JUnit 5 use @Tag("FR-006") and name the method for the behavior.
+      user_message: I'm writing a test that verifies cancellation at exactly slotStart is refused. It's the second test case for FR-006. What should I name it and what ID should it carry?
     assert:
       - type: contains
-        value: "TC-FR-006-2"
+        value: TC-FR-006-2
