@@ -248,6 +248,7 @@ jobs:
         uses: github/codeql-action/init@v4
         with:
           languages: java
+          build-mode: manual
 
       - name: Build for CodeQL
         run: ./gradlew compileJava

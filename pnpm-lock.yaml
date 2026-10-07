@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  uuid: 11.1.1
+
 importers:
 
   .:
@@ -1255,13 +1258,8 @@ packages:
     peerDependencies:
       browserslist: '>= 4.21.0'
 
-  uuid@10.0.0:
-    resolution: {integrity: sha512-8XkAphELsDnEGrDxUOHB3RGvXz6TeuYSGEZBOjtTtPm2lwhGBjLgOzLHB63IUWfBpNucQjND6d3AOudO+H3RWQ==}
-    deprecated: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
-    hasBin: true
-
-  uuid@11.0.5:
-    resolution: {integrity: sha512-508e6IcKLrhxKdBbcA2b4KQZlLVp2+J5UwQ6F7Drckkc5N9ZJwFa4TgWtsww9UG8fGHbm6gbV19TdM5pQ4GaIA==}
+  uuid@11.1.1:
+    resolution: {integrity: sha512-vIYxrBCC/N/K+Js3qSN88go7kIfNPssr/hHCesKCQNAjmgvYS2oqr69kIufEG+O4+PfezOH4EbIeHCfFov8ZgQ==}
     hasBin: true
 
   vite@6.4.4:
@@ -1620,14 +1618,14 @@ snapshots:
       '@types/uuid': 10.0.0
       class-transformer: 0.5.1
       reflect-metadata: 0.2.2
-      uuid: 10.0.0
+      uuid: 11.1.1
 
   '@cucumber/messages@27.2.0':
     dependencies:
       '@types/uuid': 10.0.0
       class-transformer: 0.5.1
       reflect-metadata: 0.2.2
-      uuid: 11.0.5
+      uuid: 11.1.1
 
   '@cucumber/query@13.6.0(@cucumber/messages@27.2.0)':
     dependencies:
@@ -2469,9 +2467,7 @@ snapshots:
       escalade: 3.2.0
       picocolors: 1.1.1
 
-  uuid@10.0.0: {}
-
-  uuid@11.0.5: {}
+  uuid@11.1.1: {}
 
   vite@6.4.4(@types/node@22.20.5):
     dependencies:
