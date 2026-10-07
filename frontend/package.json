@@ -8,6 +8,7 @@
     "build": "tsc --noEmit && vite build",
     "type-check": "tsc --noEmit",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "test:watch": "vitest"
   },
   "dependencies": {

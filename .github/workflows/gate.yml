@@ -196,8 +196,25 @@ jobs:
           distribution: zulu
           cache: gradle
 
-      - name: Build and collect coverage
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build and collect Java coverage
         run: ./gradlew build jacocoTestReport
+
+      # sonar-project.properties reads frontend/coverage/lcov.info. Nothing in
+      # this job wrote it before, so the frontend was analysed with no coverage
+      # data at all. Coverage is published, never gated (NFR-009).
+      - name: Collect frontend coverage
+        run: pnpm --filter appointment-booking-frontend test:coverage
 
       - name: SonarCloud scan
         uses: SonarSource/sonarcloud-github-action@v3
