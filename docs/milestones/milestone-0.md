@@ -319,8 +319,8 @@ The following user actions unblock the remaining clauses:
 1. Create a GitHub repository and run `git remote add origin <url>`.
 2. Make an initial commit (`git add --all && git commit`) and push to trigger CI.
 3. Run `claude setup-token` and add its output as the `CLAUDE_CODE_OAUTH_TOKEN` GitHub Actions secret, then add `SONAR_TOKEN`, `OTEL_EXPORTER_OTLP_ENDPOINT`, and `OTEL_EXPORTER_OTLP_HEADERS`. The eval suites and the review agents authenticate with the subscription token; no `ANTHROPIC_API_KEY` is used anywhere. The status cells above predate that change and are superseded by the re-run of this review required at step 8.
-4. Update `sonar.organization` in `sonar-project.properties` with the SonarCloud org slug.
-5. Set up branch protection on `main` (require PR, require gate CI checks).
+4. Update `sonar.organization` in `sonar-project.properties` with the SonarCloud org slug, then point the project at a custom quality gate rather than the default one: in SonarCloud, **Quality Gates → Copy** of `Sonar way`, remove the **Coverage on New Code** and **Duplicated Lines on New Code** conditions, leave every issue, rating, and security-hotspot condition untouched, and attach it under **Project Settings → Quality Gate**. See the quality-gate row of 2026-10-06 in `docs/decisions.md` for why.
+5. Set up branch protection on `main` (require PR, require gate CI checks). Require the `Quality gate` job from `gate.yml` — not SonarCloud's own app check, which reports analysis status rather than this project's gate.
 6. Create one proof branch per planted-violation kind, open a PR for each, verify the gate fails, close without merging. Link each closed PR into `docs/requirements/NFR-012.md`'s evidence table.
 7. Open a PR carrying any small change, verify `review-agents.yml` posts a comment, close.
 8. Re-run this exit review once all six remaining clauses are green.
