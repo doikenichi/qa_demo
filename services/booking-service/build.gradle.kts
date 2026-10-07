@@ -29,6 +29,12 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("io.opentelemetry.instrumentation:opentelemetry-spring-boot-starter")
 
+    // PLANTED VIOLATION for the NFR-012 AC-3-f gate proof. Apache Commons
+    // Collections 3.2.1 carries GHSA-fjq5-5j5f-mvxh / CVE-2015-7501
+    // (unsafe deserialization, CRITICAL). `dependency-review` runs with
+    // fail-on-severity: high, so this must fail the gate. Never merge.
+    implementation("commons-collections:commons-collections:3.2.1")
+
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("io.opentelemetry:opentelemetry-sdk-testing")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
