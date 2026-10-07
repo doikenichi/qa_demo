@@ -24,7 +24,7 @@ Read the diff. Flag anything that contradicts a `Current` row in `docs/decisions
 5. **Restated rule** — a comment or constant that copies wording from the spec rather than citing the section and rule number.
 6. **Superseded decision** — code that implements a row whose `Status` is `Superseded by …` or `Amended by …`, ignoring the current row.
 
-For each finding: quote the diff line, name the contradicted decision row or spec section, and state what the correct approach is.
+Report in the one-line shape the invoking prompt specifies: one finding per line, no prose, no diff quotes, no restating the rule.
 
 ## Scheduled non-diff mode
 

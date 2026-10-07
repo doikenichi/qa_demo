@@ -35,10 +35,10 @@ jobs:
           - requirement-docs
           - test-design
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "24"
 
@@ -64,7 +64,7 @@ jobs:
           node .claude/evals/summarize-run.mjs             "${{ matrix.skill }}"             "eval-results-${{ matrix.skill }}.json"
 
       - name: Upload eval results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: eval-results-${{ matrix.skill }}
@@ -87,10 +87,10 @@ jobs:
           - requirement-docs
           - test-design
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "24"
 
@@ -120,7 +120,7 @@ jobs:
 
 
       - name: Upload withheld eval results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: withheld-results-${{ matrix.skill }}

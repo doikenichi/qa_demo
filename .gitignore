@@ -67,6 +67,12 @@ trivy-results.sarif
 eval-results-*.json
 withheld-results-*.json
 
+# Written into the workspace by the review-agents summary job: the collated
+# block, the rewritten pull request body, and each agent's findings file.
+review-summary.md
+pr-body.md
+review-findings/
+
 # Claude Code per-machine settings. Previously ignored only by a global
 # ~/.config/git/ignore on one developer's machine, so the repository carried no
 # guarantee of its own.

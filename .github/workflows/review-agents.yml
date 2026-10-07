@@ -1,8 +1,13 @@
 name: Review Agents
 
 # Advisory only — findings are recorded on every pull request including clean runs.
-# A finding never blocks a merge (AI-assisted SDLC; NFR-012 item 2). Every step
+# A finding never blocks a merge (AI-assisted SDLC; NFR-012 item 2). Every AI step
 # below is continue-on-error for that reason: no AI step can pass or fail the build.
+#
+# Each agent writes its findings to a file rather than posting a comment. The
+# `post-review-summary` job collates those files into one block in the pull
+# request body. One place to read, and re-running the workflow revises that block
+# instead of appending a sixth, seventh, and eighth comment.
 #
 # Authenticated by a Claude subscription OAuth token (`claude setup-token`), not an
 # Anthropic API key.
@@ -11,13 +16,16 @@ on:
   pull_request:
 
 permissions:
-  pull-requests: write
   contents: read
 
 jobs:
   run-review-agents:
     name: Run review agents
     runs-on: ubuntu-latest
+    # The agents only produce files here; the body is written by the job below,
+    # which is the single place that needs write access.
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -28,7 +36,7 @@ jobs:
           - traceability-auditor
           - security-reviewer
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -38,11 +46,10 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          # Comment on a pull_request event rather than waiting for a trigger phrase.
-          track_progress: true
-          # One comment per agent: a sticky comment would have the five matrix legs
-          # overwrite each other.
-          use_sticky_comment: false
+          # `track_progress` exists only to force tag mode with tracking comments.
+          # Left at its default of false, the action runs the prompt on the
+          # pull_request event and posts nothing — which is the point: the summary
+          # job owns the one place findings appear.
           prompt: |
             Read `.claude/agents/${{ matrix.agent }}.md`. That file is the review
             standard — apply exactly it, and nothing else, to the diff of this pull
@@ -51,15 +58,124 @@ jobs:
             The specification is `appointment-booking-project.md`. Cite rules and
             requirements by their identifier rather than restating them.
 
-            Post one comment titled "Review agent: `${{ matrix.agent }}`" and begin it
-            with the line:
-            "> **Advisory only** — a finding never blocks merge."
+            Write your findings to `review-findings/${{ matrix.agent }}.md` and post
+            no comment. That file is your only output, and this is the whole of its
+            shape — it is read by a script, and a reviewer scans it in seconds.
 
-            Report every finding with its file and line. If you find nothing, say so
-            explicitly — write that the run was clean and that you found no findings.
-            A clean run is required evidence, so never end without a comment.
+            Findings:
 
-            Do not modify any file. Review only.
+                STATUS: findings
+                COUNT: 2
+                - `path/to/File.java:42` — what is wrong (RULE-ID) -> the fix
+                - `path/to/Other.ts:17` — what is wrong (NFR-001) -> the fix
+
+            Clean:
+
+                STATUS: clean
+                Checked <what you looked at>. Nothing found.
+
+            Hard rules for each finding line. One line, no wrapping. **At most 15
+            words** after the file reference. Name the file and line, say what is
+            wrong, give the rule or requirement identifier in brackets, and give the
+            fix after `->` in at most 5 words. Report the same defect once, however
+            many lines it touches: cite the first and write `+N more` at the end of
+            that line.
+
+            Do not write a preamble, a summary, a severity section, a conclusion, or
+            a closing offer to help. Do not quote the diff. Do not restate or explain
+            the rule — the identifier is the explanation, and a reader who wants the
+            wording follows it. Do not include a code block, a table, or a nested
+            bullet. Do not repeat the agent name or the word "advisory": the summary
+            job adds both.
+
+            Example of the length wanted:
+
+                - `BookingService.java:88` — inline Instant.now() (NFR-001) -> inject Clock
+
+            A clean run is required evidence, so never finish without writing the
+            file. Write that one file and nothing else. Do not modify any other
+            file, and do not commit or push.
           claude_args: |
-            --max-turns 8
-            --disallowedTools "Edit,Write,NotebookEdit"
+            --max-turns 10
+            --disallowedTools "Edit,NotebookEdit"
+
+      # Evidence that the agent reviewed rather than edited. Advisory, like every
+      # step in this workflow: it reports and never fails the job. A stray write
+      # cannot reach anything regardless — this workspace is discarded, and only
+      # the findings file crosses into the summary job as an artifact.
+      - name: Confirm the agent changed no tracked file
+        if: always()
+        continue-on-error: true
+        run: |
+          if git diff --quiet HEAD --; then
+            echo "Clean: no tracked file was modified."
+          else
+            echo "::warning::${{ matrix.agent }} modified tracked files. Not committed; listed below."
+            git diff --name-only HEAD --
+          fi
+
+      - name: Upload findings for ${{ matrix.agent }}
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: review-findings-${{ matrix.agent }}
+          path: review-findings/${{ matrix.agent }}.md
+          # An agent that produced nothing uploads nothing. The summary job reads
+          # that absence as "did not report", which is not the same as clean.
+          if-no-files-found: ignore
+
+  post-review-summary:
+    name: Post review summary to the pull request body
+    runs-on: ubuntu-latest
+    needs: run-review-agents
+    # Runs even when an agent leg failed, so the summary reflects every agent —
+    # including the ones that did not report.
+    if: ${{ always() }}
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      # The collator edits author-written text, so its splice is tested before it
+      # is trusted with a body. Not an AI step, so it is safe for it to fail:
+      # a broken splice should stop the job, not mangle the pull request.
+      - name: Test the collator
+        run: node --test .github/scripts/
+
+      - name: Download every agent's findings
+        uses: actions/download-artifact@v6
+        with:
+          pattern: review-findings-*
+          path: review-findings
+          merge-multiple: true
+
+      # Collation is a plain script, not an AI step: the same findings produce the
+      # same block byte for byte, and no finding is added, dropped, or reworded on
+      # the way into the body.
+      #
+      # Editing the body does not re-trigger this workflow. `on: pull_request`
+      # defaults to opened, synchronize, and reopened — `edited` is not among them.
+      - name: Collate findings and update the body
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          # A fork pull request gets a read-only token whatever this permissions
+          # block says, so the body cannot be edited. The script then leaves the
+          # summary in the step summary and the artifact, and exits 0.
+          CAN_EDIT_BODY: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+        run: node .github/scripts/collate-review-findings.mjs
+
+      - name: Upload the collated summary
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: review-summary
+          path: review-summary.md
+          if-no-files-found: warn

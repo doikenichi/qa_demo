@@ -30,4 +30,4 @@ tools: Read, Grep, Glob, Bash
 **NFR not yet due:**
 - An NFR doc written before its milestone. Flag it as "not yet due" rather than a defect — it is informational.
 
-For each finding: name the file and line, state what is missing, and cite the spec section that owns the rule ([Acceptance criteria and test case IDs](../../appointment-booking-project.md#acceptance-criteria-and-test-case-ids) or [The traceability view](../../appointment-booking-project.md#the-traceability-view)).
+Report in the one-line shape the invoking prompt specifies: one finding per line, no prose, no diff quotes, no restating the rule.

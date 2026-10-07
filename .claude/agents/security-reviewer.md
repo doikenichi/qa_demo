@@ -32,4 +32,4 @@ Any span attribute, metric label, or structured log field that carries:
 
 The rule from [Telemetry](../../appointment-booking-project.md#telemetry) and NFR-010: redact at the call site, never downstream.
 
-For each finding: quote the diff line, name the rule from `secure-coding` or the spec section it breaks, and state the correct approach.
+Report in the one-line shape the invoking prompt specifies: one finding per line, no prose, no diff quotes, no restating the rule.
