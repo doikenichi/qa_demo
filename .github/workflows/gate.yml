@@ -8,6 +8,11 @@ on:
 # No automatic retries anywhere in CI — NFR-001.
 # Each job below must be proven to fail on a planted violation (NFR-012 item 3).
 
+# Least privilege by default; the jobs that need more (Trivy and CodeQL upload
+# to code scanning) declare it themselves, which replaces this block for them.
+permissions:
+  contents: read
+
 jobs:
   # ── Java formatting and style ────────────────────────────────────────────────
   java-lint:

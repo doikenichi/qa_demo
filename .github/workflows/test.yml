@@ -5,9 +5,19 @@ on:
     branches: [main]
   pull_request:
 
+# Least privilege at the workflow level. The write scopes the test-results
+# publisher needs are declared on the java-tests job alone, which is the only
+# job that creates a check run; frontend-tests only uploads an artifact.
+permissions:
+  contents: read
+
 jobs:
   java-tests:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
 
@@ -33,7 +43,7 @@ jobs:
 
       - name: Publish test results
         uses: EnricoMi/publish-unit-test-result-action@v2
-        if: always()
+        if: ${{ always() && github.actor != 'dependabot[bot]' && (github.event_name == 'push' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login != 'dependabot[bot]')) }}
         with:
           files: services/*/build/test-results/**/*.xml
 
