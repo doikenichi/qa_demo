@@ -17,9 +17,20 @@ tests:
     assert:
       - type: contains
         value: fractional_seconds
-  - description: "With skill: refuses virtual threads"
+  # Asserts on the two requirement IDs the skill names, not on its refusal wording.
+  # `contains: not adopted` sat here until 2026-10-09 and was flaky: it required the
+  # model to echo the skill's prose, which it paraphrases ("aren't adopted", "are not
+  # used"), so the suite went red on correct answers. The IDs are unguessable without
+  # the artifact and the prompt asks for them outright, so a correct answer has to
+  # contain them.
+  - description: "With skill: names the requirements virtual threads would disturb"
     vars:
-      user_message: Should I use virtual threads for the booking service HTTP handler threads to improve throughput?
+      user_message: >-
+        Should I use virtual threads for the booking service HTTP handler threads to
+        improve throughput? Answer yes or no, then list the requirement IDs whose tests
+        the change would disturb.
     assert:
       - type: contains
-        value: not adopted
+        value: NFR-002
+      - type: contains
+        value: NFR-004
