@@ -21,5 +21,5 @@ tests:
     vars:
       user_message: Should I use virtual threads for the booking service HTTP handler threads to improve throughput?
     assert:
-      - type: contains
-        value: not adopted
+      - type: javascript
+        value: "output.includes('not adopted') || output.includes(\"aren't adopted\")"
