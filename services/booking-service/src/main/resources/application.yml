@@ -13,3 +13,7 @@ management:
 
 app:
   time-zone: ${APP_TIME_ZONE:Europe/Berlin}
+  # PLANTED VIOLATION for the NFR-012 AC-3-e gate proof. This value is
+  # fabricated, matches the gitleaks aws-access-token pattern, and
+  # authenticates to nothing. It must never be merged.
+  aws-access-key-id: AKIA2QV7HXZPLM4RTD9C
